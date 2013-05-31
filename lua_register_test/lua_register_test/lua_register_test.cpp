@@ -29,14 +29,35 @@ std::string test5(const std::string &msg, const std::string &msg2)
 	return msg + msg2;
 }
 
+
 struct test_t
 {
-	char test6()
+	char test6(bool suc)
 	{
 		return 'a';
 	}
 };
 
+
+void test7(const std::pair<const char *, std::uint32_t> &buffer)
+{
+
+}
+
+std::vector<int> test8(const std::vector<int> &v)
+{
+	return v;
+}
+
+std::vector<std::pair<int, std::string>> test9(int n, const std::vector<std::pair<int, std::string>> &v)
+{
+	return v;
+}
+
+std::pair<std::string, std::uint32_t> test10(const std::pair<std::string, std::uint32_t> &val)
+{
+	return val;
+}
 
 int _tmain(int argc, _TCHAR* argv[])
 {
@@ -45,15 +66,19 @@ int _tmain(int argc, _TCHAR* argv[])
 	
 	using namespace std::placeholders;
 
-	lua::register_instance().reg(state, "test1", std::bind(&test1, _1), &test1);
-	lua::register_instance().reg(state, "test2", std::bind(&test2, _1, _2, _3), &test2);
-	lua::register_instance().reg(state, "test3", std::bind(&test3, _1), &test3);
-	lua::register_instance().reg(state, "test4", std::bind(&test4, _1), &test4);
-	lua::register_instance().reg(state, "test5", std::bind(&test5, _1, _2), &test5);
+	lua::reg(state, "test1", &test1);
+	lua::reg(state, "test2", &test2);
+	lua::reg(state, "test3", &test3);
+	lua::reg(state, "test4", &test4);
+	lua::reg(state, "test5", &test5);
 
 	test_t t;
-	lua::register_instance().reg(state, "test6", std::bind(&test_t::test6, std::ref(t)), &test_t::test6);
-	lua::register_instance().reg(state, "test7", [](const std::string &msg1, const std::string &msg2)->std::string{ return "1"; }, &test5);
+	lua::reg(state, "test6", std::ref(t), &test_t::test6);
+	lua::reg(state, "test7", &test7);
+	lua::reg(state, "test8", &test8);
+	lua::reg(state, "test9", &test9);
+	lua::reg(state, "test10", &test10);
+
 
 	module->executeScriptFile("test.lua");
 

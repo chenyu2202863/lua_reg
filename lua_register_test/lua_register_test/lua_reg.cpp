@@ -1,5 +1,8 @@
 #include "lua_reg.hpp"
 
+#include "multithread/tls.hpp"
+
+
 namespace lua {
 
 	template < std::uint32_t N >
@@ -41,9 +44,12 @@ namespace lua {
 		callback_index_ = 0;
 	}
 
+	multi_thread::tls_ptr_t<register_t> tls_reg_val;
 	register_t &register_instance()
 	{
-		static register_t reg;
-		return reg;
+		if( tls_reg_val == nullptr )
+			tls_reg_val = new register_t;
+
+		return *tls_reg_val;
 	}
 }
