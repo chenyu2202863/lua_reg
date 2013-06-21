@@ -2,8 +2,12 @@
 //
 
 #include "stdafx.h"
-#include "lua_reg.hpp"
-#include "LuaModule.h"
+#include "stdafx.h"
+
+#include <iostream>
+#include "lua_reg/lua_reg.hpp"
+
+
 
 void test1(int n)
 {
@@ -36,6 +40,11 @@ struct test_t
 	{
 		return 'a';
 	}
+
+	int test11() const
+	{
+		return 1;
+	}
 };
 
 
@@ -59,32 +68,67 @@ std::pair<std::string, std::uint32_t> test10(const std::pair<std::string, std::u
 	return val;
 }
 
+std::pair<std::string, std::pair<std::uint32_t, std::uint32_t>> test12(const std::vector<std::pair<std::string, std::pair<std::uint32_t, std::uint32_t>>> &val)
+{
+	return val.front();
+}
+
+std::tuple<int, std::string, bool, std::pair<int, std::string>> test13(const std::tuple<int, std::string, bool, std::pair<int, std::string>> &val)
+{
+	return val;
+}
+
+
+std::map<int, std::string> test14(const std::map<int, std::string> &val)
+{
+	return val;
+}
+
+
+namespace lua = luareg;
+
 int _tmain(int argc, _TCHAR* argv[])
 {
-	auto module = script::LuaModule::create();
-	lua_State *state = module->getLuaState();
-	
-	using namespace std::placeholders;
+	luareg::state_t state;
 
-	lua::reg(state, "test1", &test1);
-	lua::reg(state, "test2", &test2);
-	lua::reg(state, "test3", &test3);
-	lua::reg(state, "test4", &test4);
-	lua::reg(state, "test5", &test5);
+	{
+		lua::reg(state, "test1", &test1);
+		lua::reg(state, "test2", &test2);
+		lua::reg(state, "test3", &test3);
+		lua::reg(state, "test4", &test4);
+		lua::reg(state, "test5", &test5);
 
-	test_t t;
-	lua::reg(state, "test6", std::ref(t), &test_t::test6);
-	lua::reg(state, "test7", &test7);
-	lua::reg(state, "test8", &test8);
-	lua::reg(state, "test9", &test9);
-	lua::reg(state, "test10", &test10);
+		test_t t;
+		lua::reg(state, "test6", std::ref(t), &test_t::test6);
+		lua::reg(state, "test7", &test7);
+		lua::reg(state, "test8", &test8);
+		lua::reg(state, "test9", &test9);
+		lua::reg(state, "test10", &test10);
+		//lua::reg(state, "test11", std::ref(t), &test_t::test11);
+		lua::reg(state, "test12", &test12);
+		lua::reg(state, "test13", &test13);
+		lua::reg(state, "test14", &test14);
+
+		lua::execute(state, "test.lua");
+	}
 
 
-	module->executeScriptFile("test.lua");
+	try
+	{
+		lua::execute(state, "test2.lua");
+		std::pair<int, std::string> n = lua::call(state, "test_call", 1, "haha", 10.2, false);
 
-	
+		auto val = std::make_pair("test abc", 10.2);
+		lua::call(state, "test_call2", 1, "haha", val);
+	}
+	catch(const luareg::fatal_error_t &e)
+	{
+		std::cout << e.what() << std::endl;
+		e.dump(std::cout);
+	}
+
+
 	system("pause");
-	script::LuaModule::destroy(module);
 	return 0;
 }
 

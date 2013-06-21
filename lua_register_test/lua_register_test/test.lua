@@ -39,3 +39,19 @@ v = test10({"123", 456})
 for index = 1, table.getn(v) do
 	print(index, v[index])
 end
+
+v = test12({{"chen", {123,456}}, {"yu", {456,789}}})
+for index = 1, table.getn(v) do
+	print(index, v[index])
+end
+
+print("\n")
+v = test13({2, "chenyu", false, {456, "asd"}})
+for index = 1, table.getn(v) do
+	print(index, v[index])
+end
+
+v = test14({{1, "1"}, {2, "2"}, {3, "3"}})
+for index = 1, table.getn(v) do
+	print(index, v[index])
+end

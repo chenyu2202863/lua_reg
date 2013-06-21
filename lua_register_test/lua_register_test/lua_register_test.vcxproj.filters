@@ -16,6 +16,9 @@
     <Filter Include="lua">
       <UniqueIdentifier>{c5600511-2ec4-40ce-aa74-7fa52e9dc33d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="lua\details">
+      <UniqueIdentifier>{66ad3a66-211b-44a9-8efe-117ba0181abf}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -27,11 +30,38 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="LuaModule.h">
+    <ClInclude Include="lua_reg\call.hpp">
       <Filter>lua</Filter>
     </ClInclude>
-    <ClInclude Include="lua_reg.hpp">
+    <ClInclude Include="lua_reg\config.hpp">
       <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="lua_reg\converter.hpp">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="lua_reg\def.hpp">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="lua_reg\error.hpp">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="lua_reg\execute.hpp">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="lua_reg\lua_reg.hpp">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="lua_reg\serialize.hpp">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="lua_reg\state.hpp">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="lua_reg\details\converter.hpp">
+      <Filter>lua\details</Filter>
+    </ClInclude>
+    <ClInclude Include="lua_reg\details\def.hpp">
+      <Filter>lua\details</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -41,11 +71,13 @@
     <ClCompile Include="lua_register_test.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="LuaModule.cpp">
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="test.lua">
       <Filter>lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua_reg.cpp">
+    </None>
+    <None Include="test2.lua">
       <Filter>lua</Filter>
-    </ClCompile>
+    </None>
   </ItemGroup>
 </Project>
