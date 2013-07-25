@@ -4,22 +4,26 @@
 #include "config.hpp"
 #include "converter.hpp"
 #include "error.hpp"
+#include "reference.hpp"
 
 namespace luareg {
 
-	template < typename T, typename... Args >  
-	void push_value(state_t &state, T&& t, Args &&...args)
+	inline void push_value(state_t &state)
+	{}
+
+	template < typename T, typename... Args >
+	void push_value(state_t &state, T && t, Args && ...args)
 	{
-		push_value(state, std::forward<T>(t));
-		push_value(state, std::forward<Args>(args)...);
+		push_value(state, std::forward<T>( t ));
+		push_value(state, std::forward<Args>( args )...);
 	}
 
-	template < typename T, typename... Args >  
-	void push_value(state_t &state, T&& t)
+	template < typename T, typename... Args >
+	void push_value(state_t &state, T && t)
 	{
-		typedef typename std::remove_cv<
+		typedef typename std::remove_cv <
 			typename std::remove_reference<T>::type
-		>::type value_t;
+		> ::type value_t;
 
 		convertion_t<value_t>::to(state, t);
 	}
@@ -33,21 +37,12 @@ namespace luareg {
 		{}
 
 		template < typename T >
-		operator T()
+		operator T() const
 		{
 			return convertion_t<T>::from(state_, -1);
 		}
 	};
 
-	struct error_t
-	{
-		static int handler(lua_State *state)
-		{
-			throw fatal_error_t(state, lua_tostring(state, -1));
-		
-			return 0;
-		}
-	};
 
 	template< typename ... Args >
 	call_ret_t call(state_t &state, const char *function_name, Args&&... args )
@@ -60,7 +55,6 @@ namespace luareg {
 		int top = ::lua_gettop(state);
 
 		push_value(state, std::forward<Args>(args)...);
-
 
 		int error_index = 0;
 		int base = ::lua_gettop(state) - arg_cnt;
@@ -79,11 +73,32 @@ namespace luareg {
 		return call_ret_t(state);
 	}
 
-	/*template< typename ... Args >
-	call_ret_t call(state_t &state, std::uint32_t index, Args&&... args )
+	template< typename ... Args >
+	call_ret_t call(state_t &state, const function_ref_t &func, Args &&... args)
 	{
+		assert(func.is_valid());
+		func.get();
 
-	}*/
+		auto arg_cnt = sizeof...( args );
+		int top = ::lua_gettop(state);
+		push_value(state, std::forward<Args>( args )...);
+
+		int error_index = 0;
+		int base = ::lua_gettop(state) - arg_cnt;
+		lua_pushcfunction(state, &error_t::handler);
+		lua_insert(state, base);
+		error_index = base;
+
+		int error = ::lua_pcall(state, arg_cnt, 1, error_index);
+		assert(error == 0);
+
+		if(error_index != 0)
+			::lua_remove(state, error_index);
+
+		int top_last = ::lua_gettop(state);
+
+		return call_ret_t(state);
+	}
 }
 
 #endif

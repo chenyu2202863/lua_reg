@@ -19,7 +19,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v120_CTP_Nov2012</PlatformToolset>
+    <PlatformToolset>v120</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
@@ -41,6 +41,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <OutDir>../../../bin</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -52,13 +53,13 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../../lua/include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../third_party/lua/include;../../../include/</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>../../lua/lib/</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../../../third_party/lua/lib/</AdditionalLibraryDirectories>
       <AdditionalDependencies>lua51.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -83,17 +84,6 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="lua_reg\call.hpp" />
-    <ClInclude Include="lua_reg\config.hpp" />
-    <ClInclude Include="lua_reg\converter.hpp" />
-    <ClInclude Include="lua_reg\def.hpp" />
-    <ClInclude Include="lua_reg\details\converter.hpp" />
-    <ClInclude Include="lua_reg\details\def.hpp" />
-    <ClInclude Include="lua_reg\error.hpp" />
-    <ClInclude Include="lua_reg\execute.hpp" />
-    <ClInclude Include="lua_reg\lua_reg.hpp" />
-    <ClInclude Include="lua_reg\serialize.hpp" />
-    <ClInclude Include="lua_reg\state.hpp" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
@@ -106,7 +96,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="test.lua" />
-    <None Include="test2.lua" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

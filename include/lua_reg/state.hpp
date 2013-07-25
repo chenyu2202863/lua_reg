@@ -79,6 +79,17 @@ namespace luareg {
 				::lua_close(state_);
 		}
 	};
+
+
+	struct index_t
+	{
+		int idx_;
+
+		explicit operator int( ) const
+		{
+			return idx_;
+		}
+	};
 }
 
 #endif

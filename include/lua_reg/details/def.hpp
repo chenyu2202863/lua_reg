@@ -5,24 +5,80 @@
 
 #include "../config.hpp"
 #include "../converter.hpp"
+#include "../error.hpp"
 
 namespace luareg { namespace details {
 
 
-	template < std::uint32_t N >
-	void check_stack(state_t &state)
+	void check_stack(state_t &state, std::uint32_t N)
 	{
 		int n = ::lua_gettop(state);
-		assert(n == N);
+		if ( n != N )
+			throw parameter_error_t(state, "expect parameter count error ");
 	}
 
+	template < typename T >
+	struct is_normal_t
+	{
+		typedef std::true_type type;
+	};
+
+	template <>
+	struct is_normal_t<state_t>
+	{
+		typedef std::false_type type;
+	};
+
+	template <>
+	struct is_normal_t<index_t>
+	{
+		typedef std::false_type type;
+	};
+
+
+	template < std::uint32_t N >
+	struct param_count_t
+	{
+		template < typename TupleT >
+		static void count(std::uint32_t &cnt)
+		{
+			typedef typename std::tuple_element<N, TupleT>::type element_type;
+			typedef typename std::remove_cv<typename std::remove_reference<element_type>::type>::type origi_type;
+			typedef typename is_normal_t<origi_type>::type type;
+
+			cnt += std::is_same<type, std::true_type>::value ? 1 : 0;
+			param_count_t<N - 1>::count<TupleT>(cnt);
+		}
+	};
+
+	template < >
+	struct param_count_t<0>
+	{
+		template < typename TupleT >
+		static void count(std::uint32_t &cnt)
+		{
+			typedef typename std::tuple_element<0, TupleT>::type element_type;
+			typedef typename std::remove_cv<typename std::remove_reference<element_type>::type>::type origi_type;
+			typedef typename is_normal_t<origi_type>::type type;
+
+			cnt += std::is_same<type, std::true_type>::value ? 1 : 0;
+		}
+	};
+
+	template < typename TupleT >
+	std::uint32_t param_count()
+	{
+		std::uint32_t cnt = 0;
+		param_count_t<std::tuple_size<TupleT>::value - 1>::count<TupleT>(cnt);
+		return cnt;
+	}
 
 
 	template < std::uint32_t N, typename TupleT >
 	struct auto_check_value_t
 	{
 		typedef typename std::tuple_element<N, TupleT>::type element_param_t;
-		typedef typename std::remove_const<typename std::remove_reference<element_param_t>::type>::type param_t;
+		typedef typename std::remove_cv<typename std::remove_reference<element_param_t>::type>::type param_t;
 
 		static auto check(state_t &state)->decltype(convertion_t<param_t>::from(state, N + 1))
 		{
@@ -50,7 +106,7 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static void handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack<0>(state);
+			check_stack(state, param_count<TupleT>());
 			handler();
 		}
 	};
@@ -61,8 +117,9 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static R handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack<1>(state);
-			return handler(std::cref(auto_check_value_t<0, TupleT>::check(state)));
+			check_stack(state, param_count<TupleT>());
+			static_assert(std::is_same<R, decltype(handler(auto_check_value_t<0, TupleT>::check(state)))>::value, "R type must same as decltype(handler())");
+			return handler(auto_check_value_t<0, TupleT>::check(state));
 		}
 	};
 
@@ -72,8 +129,8 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static void handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack<1>(state);
-			handler(std::cref(auto_check_value_t<0, TupleT>::check(state)));
+			check_stack(state, param_count<TupleT>());
+			handler(auto_check_value_t<0, TupleT>::check(state));
 		}
 	};
 
@@ -83,10 +140,10 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static R handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack<2>(state);
+			check_stack(state, param_count<TupleT>());
 			return handler(
-				std::cref(auto_check_value_t<0, TupleT>::check(state)),
-				std::cref(auto_check_value_t<1, TupleT>::check(state)));
+				auto_check_value_t<0, TupleT>::check(state),
+				auto_check_value_t<1, TupleT>::check(state));
 		}
 	};
 
@@ -96,10 +153,10 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static void handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack<2>(state);
+			check_stack(state, param_count<TupleT>());
 			handler(
-				std::cref(auto_check_value_t<0, TupleT>::check(state)),
-				std::cref(auto_check_value_t<1, TupleT>::check(state)));
+				auto_check_value_t<0, TupleT>::check(state),
+				auto_check_value_t<1, TupleT>::check(state));
 		}
 	};
 
@@ -109,11 +166,11 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static R handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack<3>(state);
+			check_stack(state, param_count<TupleT>());
 			return handler(
-				std::cref(auto_check_value_t<0, TupleT>::check(state)),
-				std::cref(auto_check_value_t<1, TupleT>::check(state)),
-				std::cref(auto_check_value_t<2, TupleT>::check(state)));
+				auto_check_value_t<0, TupleT>::check(state),
+				auto_check_value_t<1, TupleT>::check(state),
+				auto_check_value_t<2, TupleT>::check(state));
 		}
 	};
 
@@ -123,11 +180,11 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static void handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack<3>(state);
+			check_stack(state, param_count<TupleT>());
 			handler(
-				std::cref(auto_check_value_t<0, TupleT>::check(state)),
-				std::cref(auto_check_value_t<1, TupleT>::check(state)),
-				std::cref(auto_check_value_t<2, TupleT>::check(state)));
+				auto_check_value_t<0, TupleT>::check(state),
+				auto_check_value_t<1, TupleT>::check(state),
+				auto_check_value_t<2, TupleT>::check(state));
 		}
 	};
 
@@ -137,12 +194,12 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static R handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack<4>(state);
+			check_stack(state, param_count<TupleT>());
 			return handler(
-				std::cref(auto_check_value_t<0, TupleT>::check(state)),
-				std::cref(auto_check_value_t<1, TupleT>::check(state)),
-				std::cref(auto_check_value_t<2, TupleT>::check(state)),
-				std::cref(auto_check_value_t<3, TupleT>::check(state)));
+				auto_check_value_t<0, TupleT>::check(state),
+				auto_check_value_t<1, TupleT>::check(state),
+				auto_check_value_t<2, TupleT>::check(state),
+				auto_check_value_t<3, TupleT>::check(state));
 		}
 	};
 
@@ -152,12 +209,12 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static void handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack<4>(state);
+			check_stack(state, param_count<TupleT>());
 			handler(
-				std::cref(auto_check_value_t<0, TupleT>::check(state)),
-				std::cref(auto_check_value_t<1, TupleT>::check(state)),
-				std::cref(auto_check_value_t<2, TupleT>::check(state)),
-				std::cref(auto_check_value_t<3, TupleT>::check(state)));
+				auto_check_value_t<0, TupleT>::check(state),
+				auto_check_value_t<1, TupleT>::check(state),
+				auto_check_value_t<2, TupleT>::check(state),
+				auto_check_value_t<3, TupleT>::check(state));
 		}
 	};
 
@@ -167,13 +224,13 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static R handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack<5>(state);
+			check_stack(state, param_count<TupleT>());
 			return handler(
-				std::cref(auto_check_value_t<0, TupleT>::check(state)),
-				std::cref(auto_check_value_t<1, TupleT>::check(state)),
-				std::cref(auto_check_value_t<2, TupleT>::check(state)),
-				std::cref(auto_check_value_t<3, TupleT>::check(state)),
-				std::cref(auto_check_value_t<4, TupleT>::check(state)));
+				auto_check_value_t<0, TupleT>::check(state),
+				auto_check_value_t<1, TupleT>::check(state),
+				auto_check_value_t<2, TupleT>::check(state),
+				auto_check_value_t<3, TupleT>::check(state),
+				auto_check_value_t<4, TupleT>::check(state));
 		}
 	};
 
@@ -183,13 +240,13 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static void handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack<5>(state);
+			check_stack(state, param_count<TupleT>());
 			handler(
-				std::cref(auto_check_value_t<0, TupleT>::check(state)),
-				std::cref(auto_check_value_t<1, TupleT>::check(state)),
-				std::cref(auto_check_value_t<2, TupleT>::check(state)),
-				std::cref(auto_check_value_t<3, TupleT>::check(state)),
-				std::cref(auto_check_value_t<4, TupleT>::check(state)));
+				auto_check_value_t<0, TupleT>::check(state),
+				auto_check_value_t<1, TupleT>::check(state),
+				auto_check_value_t<2, TupleT>::check(state),
+				auto_check_value_t<3, TupleT>::check(state),
+				auto_check_value_t<4, TupleT>::check(state));
 		}
 	};
 
@@ -200,14 +257,14 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static R handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack<6>(state);
+			check_stack(state, param_count<TupleT>());
 			return handler(
-				std::cref(auto_check_value_t<0, TupleT>::check(state)),
-				std::cref(auto_check_value_t<1, TupleT>::check(state)),
-				std::cref(auto_check_value_t<2, TupleT>::check(state)),
-				std::cref(auto_check_value_t<3, TupleT>::check(state)),
-				std::cref(auto_check_value_t<4, TupleT>::check(state)),
-				std::cref(auto_check_value_t<5, TupleT>::check(state)));
+				auto_check_value_t<0, TupleT>::check(state),
+				auto_check_value_t<1, TupleT>::check(state),
+				auto_check_value_t<2, TupleT>::check(state),
+				auto_check_value_t<3, TupleT>::check(state),
+				auto_check_value_t<4, TupleT>::check(state),
+				auto_check_value_t<5, TupleT>::check(state));
 		}
 	};
 
@@ -217,14 +274,14 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static void handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack<6>(state);
+			check_stack(state, param_count<TupleT>());
 			handler(
-				std::cref(auto_check_value_t<0, TupleT>::check(state)),
-				std::cref(auto_check_value_t<1, TupleT>::check(state)),
-				std::cref(auto_check_value_t<2, TupleT>::check(state)),
-				std::cref(auto_check_value_t<3, TupleT>::check(state)),
-				std::cref(auto_check_value_t<4, TupleT>::check(state)),
-				std::cref(auto_check_value_t<5, TupleT>::check(state)));
+				auto_check_value_t<0, TupleT>::check(state),
+				auto_check_value_t<1, TupleT>::check(state),
+				auto_check_value_t<2, TupleT>::check(state),
+				auto_check_value_t<3, TupleT>::check(state),
+				auto_check_value_t<4, TupleT>::check(state),
+				auto_check_value_t<5, TupleT>::check(state));
 		}
 	};
 
@@ -256,6 +313,7 @@ namespace luareg { namespace details {
 
 	using namespace std::placeholders;
 
+	
 	template < typename T >
 	struct bind_helper_t;
 
@@ -263,13 +321,13 @@ namespace luareg { namespace details {
 	struct bind_helper_t<R()>
 	{
 		template < typename FuncT >
-		static auto bind(FuncT func)->decltype(std::bind(func))
+		static auto bind(FuncT &&func)->decltype(std::bind(func))
 		{
 			return std::bind(func);
 		}
 
 		template < typename FuncT, typename T >
-		static auto bind(FuncT func, T obj)->decltype(std::bind(func, obj))
+		static auto bind(FuncT &&func, T obj)->decltype(std::bind(func, obj))
 		{
 			return std::bind(func, obj);
 		}
@@ -280,13 +338,13 @@ namespace luareg { namespace details {
 	struct bind_helper_t<R(T1)>
 	{
 		template < typename FuncT >
-		static auto bind(FuncT func)->decltype(std::bind(func, _1))
+		static auto bind(FuncT &&func)->decltype(std::bind(func, _1))
 		{
 			return std::bind(func, _1);
 		}
 
 		template < typename FuncT, typename T >
-		static auto bind(FuncT func, T obj)->decltype(std::bind(func, obj, _1))
+		static auto bind(FuncT &&func, T obj)->decltype(std::bind(func, obj, _1))
 		{
 			return std::bind(func, obj, _1);
 		}
@@ -296,13 +354,13 @@ namespace luareg { namespace details {
 	struct bind_helper_t<R(T1, T2)>
 	{
 		template < typename FuncT >
-		static auto bind(FuncT func)->decltype(std::bind(func, _1, _2))
+		static auto bind(FuncT &&func)->decltype(std::bind(func, _1, _2))
 		{
 			return std::bind(func, _1, _2);
 		}
 
 		template < typename FuncT, typename T >
-		static auto bind(FuncT func, T obj)->decltype(std::bind(func, obj, _1, _2))
+		static auto bind(FuncT &&func, T obj)->decltype(std::bind(func, obj, _1, _2))
 		{
 			return std::bind(func, obj, _1, _2);
 		}
@@ -312,13 +370,13 @@ namespace luareg { namespace details {
 	struct bind_helper_t<R(T1, T2, T3)>
 	{
 		template < typename FuncT >
-		static auto bind(FuncT func)->decltype(std::bind(func, _1, _2, _3))
+		static auto bind(FuncT &&func)->decltype(std::bind(func, _1, _2, _3))
 		{
 			return std::bind(func, _1, _2, _3);
 		}
 
 		template < typename FuncT, typename T >
-		static auto bind(FuncT func, T obj)->decltype(std::bind(func, obj, _1, _2, _3))
+		static auto bind(FuncT &&func, T obj)->decltype(std::bind(func, obj, _1, _2, _3))
 		{
 			return std::bind(func, obj, _1, _2, _3);
 		}
@@ -328,13 +386,13 @@ namespace luareg { namespace details {
 	struct bind_helper_t<R(T1, T2, T3, T4)>
 	{
 		template < typename FuncT >
-		static auto bind(FuncT func)->decltype(std::bind(func, _1, _2, _3, _4))
+		static auto bind(FuncT &&func)->decltype(std::bind(func, _1, _2, _3, _4))
 		{
 			return std::bind(func, _1, _2, _3, _4);
 		}
 
 		template < typename FuncT, typename T >
-		static auto bind(FuncT func, T obj)->decltype(std::bind(func, obj, _1, _2, _3, _4))
+		static auto bind(FuncT &&func, T obj)->decltype(std::bind(func, obj, _1, _2, _3, _4))
 		{
 			return std::bind(func, obj, _1, _2, _3, _4);
 		}
@@ -344,13 +402,13 @@ namespace luareg { namespace details {
 	struct bind_helper_t<R(T1, T2, T3, T4, T5)>
 	{
 		template < typename FuncT >
-		static auto bind(FuncT func)->decltype(std::bind(func, _1, _2, _3, _4, _5))
+		static auto bind(FuncT &&func)->decltype(std::bind(func, _1, _2, _3, _4, _5))
 		{
 			return std::bind(func, _1, _2, _3, _4, _5);
 		}
 
 		template < typename FuncT, typename T >
-		static auto bind(FuncT func, T obj)->decltype(std::bind(func, obj, _1, _2, _3, _4, _5))
+		static auto bind(FuncT &&func, T obj)->decltype(std::bind(func, obj, _1, _2, _3, _4, _5))
 		{
 			return std::bind(func, obj, _1, _2, _3, _4, _5);
 		}
@@ -360,13 +418,13 @@ namespace luareg { namespace details {
 	struct bind_helper_t<R(T1, T2, T3, T4, T5, T6)>
 	{
 		template < typename FuncT >
-		static auto bind(FuncT func)->decltype(std::bind(func, _1, _2, _3, _4, _5, _6))
+		static auto bind(FuncT &&func)->decltype(std::bind(func, _1, _2, _3, _4, _5, _6))
 		{
 			return std::bind(func, _1, _2, _3, _4, _5, _6);
 		}
 
 		template < typename FuncT, typename T >
-		static auto bind(FuncT func, T obj)->decltype(std::bind(func, obj, _1, _2, _3, _4, _5, _6))
+		static auto bind(FuncT &&func, T obj)->decltype(std::bind(func, obj, _1, _2, _3, _4, _5, _6))
 		{
 			return std::bind(func, obj, _1, _2, _3, _4, _5, _6);
 		}

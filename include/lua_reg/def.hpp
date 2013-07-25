@@ -5,14 +5,17 @@
 #include <set>
 #include <atomic>
 #include <cstdint>
+#include <mutex>
+#include <unordered_map>
 
 #include "config.hpp"
+
+#include "traits.hpp"
 #include "state.hpp"
 #include "details/def.hpp"
 
-namespace luareg {
 
-	
+namespace luareg {
 
 	template < typename R, typename ...Args >
 	void reg(state_t &state, const std::string &name, R (*func)(Args...) )
@@ -23,26 +26,25 @@ namespace luareg {
 	template < typename R, typename U, typename T, typename ...Args >
 	void reg(state_t &state, const std::string &name, U obj, R (T::*func)(Args...))
 	{
-		register_instance().reg(state, name, details::bind_helper_t<R (Args...)>::bind(func, std::forward<U>(obj)), func);
+		register_instance().reg(state, name, details::bind_helper_t<R(Args...)>::bind(func, std::forward<U>(obj)), func);
+	}
+
+	/*template < typename R, typename U, typename T, typename ...Args >
+	void reg(state_t &state, const std::string &name, U obj, R(T::*func)( Args... ) const)
+	{
+		register_instance().reg(state, name, details::bind_helper_t<R(Args...) const>::bind(func, std::forward<U>( obj )), func);
 	}
 
 	template < typename R, typename U, typename T, typename ...Args >
-	void reg(state_t &state, const std::string &name, U obj, R (T::*func)(Args...) const)
+	void reg(state_t &state, const std::string &name, U obj, R(T::*func)( Args... ) volatile)
 	{
-		static_assert(false, "not implement, not support const member function");
-	}
+		register_instance().reg(state, name, details::bind_helper_t<R(Args...)>::bind(func, std::forward<U>( obj )), func);
+	}*/
 
-	// fix ms bug
-	template < typename R >
-	void reg(state_t &state, const std::string &name, R (*func)() )
+	template < typename T >
+	void reg(state_t &state, const std::string &name, T &&func)
 	{
-		register_instance().reg(state, name, details::bind_helper_t<R()>::bind(func), func);
-	}
-
-	template < typename R, typename U, typename T >
-	void reg(state_t &state, const std::string &name, U obj, R (T::*func)())
-	{
-		register_instance().reg(state, name, details::bind_helper_t<R()>::bind(func, obj), func);
+		register_instance().reg(state, name, std::forward<T>(func));
 	}
 
 	struct register_t
@@ -76,15 +78,22 @@ namespace luareg {
 			}
 		};
 
-		std::map<std::uint32_t, handler_base_ptr> handler_map_;
+		typedef std::uint32_t callback_function_id_t;
 
-		typedef std::map<std::uint32_t, ::lua_CFunction> callback_map_t;
+		std::map<callback_function_id_t, handler_base_ptr> handler_map_;
+
+		
+		typedef std::map<callback_function_id_t, ::lua_CFunction> callback_map_t;
 		callback_map_t callback_map_;
 
 		typedef std::set<std::string> reg_function_t;
 		reg_function_t reg_functions_;
 
-		std::atomic<std::uint32_t> callback_index_;
+		typedef std::unordered_map<std::string, callback_function_id_t> function_name_map_id_t;
+		function_name_map_id_t name_2_id_;
+
+		std::mutex reg_mutex_;
+		std::atomic<callback_function_id_t> callback_index_;
 
 		enum { MAX_CALLBACK_NUM = 50 };
 
@@ -109,17 +118,37 @@ namespace luareg {
 			reg_impl<handler_t>(state, name, std::forward<HandlerT>(handler));
 		}
 
+		template < typename HandlerT >
+		void reg(state_t &state, const std::string &name, HandlerT && handler)
+		{
+			typedef detail::function_traits_t<HandlerT>::args_type		tuple_t;
+			typedef detail::function_traits_t<HandlerT>::result_type	result_t;
+			typedef handler_impl_t<HandlerT, result_t, tuple_t>			handler_t;
+
+			reg_impl<handler_t>(state, name, std::forward<HandlerT>(handler));
+		}
+
 		template < typename HandlerImplT, typename HandlerT >
 		void reg_impl(state_t &state, const std::string &name, HandlerT &&handler)
 		{
+			std::unique_lock<std::mutex> lock(reg_mutex_);
+
+			callback_function_id_t index = 0;
 			auto iter = reg_functions_.find(name);
-			assert(iter == reg_functions_.end());
-			reg_functions_.insert(name);
+			if( iter != reg_functions_.end() )
+			{
+				index = name_2_id_[name];
+			}
+			else
+			{
+				index = callback_index_++;
+				reg_functions_.insert(name);
 
-			std::uint32_t index = callback_index_++;
+				name_2_id_[name] = index;
+				handler_map_[index] = std::make_shared<HandlerImplT>(std::forward<HandlerT>(handler));
+			}
+
 			lua_register(state, name.c_str(), callback_map_[index]);
-
-			handler_map_[index] = std::make_shared<HandlerImplT>(std::forward<HandlerT>(handler));
 		}
 	};
 
@@ -162,7 +191,7 @@ namespace luareg {
 	};
 
 
-	register_t::register_t()
+	inline register_t::register_t()
 	{
 		auto_register_callback_t<MAX_CALLBACK_NUM>::reg(callback_map_);
 		callback_index_ = 0;
@@ -170,9 +199,14 @@ namespace luareg {
 
 	inline register_t &register_instance()
 	{
-		static register_t reg;
+		static std::once_flag flag;
+		static std::unique_ptr<register_t> register_val;
 
-		return reg;
+		std::call_once(flag, []()
+		{
+			register_val.reset(new register_t);
+		});
+		return *register_val;
 	}
 }
 

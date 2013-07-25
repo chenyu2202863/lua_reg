@@ -55,3 +55,19 @@ v = test14({{1, "1"}, {2, "2"}, {3, "3"}})
 for index = 1, table.getn(v) do
 	print(index, v[index])
 end
+
+
+func = function() print("111") end
+
+test15(func)
+
+test16(function(n, m) print(n, m) end)
+
+local print_func = function(t) print(t) end
+test17(print_func, "haha")
+
+local func_func = function(func) func() end
+
+test18(func_func, func)
+
+print(test19(2323))

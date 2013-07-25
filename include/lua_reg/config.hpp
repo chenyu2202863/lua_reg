@@ -8,6 +8,7 @@ extern "C"
 #include <lauxlib.h>
 };
 
+#include <cassert>
 
 
 namespace luareg
