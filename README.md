@@ -11,15 +11,16 @@ Use of this source code is governed by a BSD-style license that can be found in 
 
 设计目标：接口简单、不依赖第三方库
 
-Example：
+示例：
 
 void test1(int n)
 {
+
 }
 
 int test2(int n, double d, const std::string &msg)
 {
-  return 10;
+	return 10;
 }
 
 std::string test3(const std::string &msg)
@@ -109,11 +110,6 @@ void test18(const lua::function_ref_t &func_ref, const lua::function_ref_t &func
 {
 	lua::call(state, func_ref, func_param);
 }
-
-
-
-
-
 
 int _tmain(int argc, _TCHAR* argv[])
 {
