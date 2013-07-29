@@ -7,7 +7,7 @@
 namespace luareg {
 
 
-	namespace detail  
+	namespace details 
 	{
 		struct function_check_t
 		{
@@ -49,6 +49,11 @@ namespace luareg {
 		int ref_;
 
 	public:
+		reference_t()
+			: state_(nullptr)
+			, ref_(LUA_NOREF)
+		{}
+
 		reference_t(lua_State *state)
 			: state_(state)
 			, ref_(LUA_NOREF)
@@ -106,9 +111,9 @@ namespace luareg {
 		}
 	};
 
-	typedef reference_t<detail::function_check_t>	function_ref_t;
-	typedef reference_t<detail::table_check_t>		table_ref_t;
-	typedef reference_t<detail::string_check_t>		string_ref_t;
+	typedef reference_t<details::function_check_t>	function_ref_t;
+	typedef reference_t<details::table_check_t>		table_ref_t;
+	typedef reference_t<details::string_check_t>	string_ref_t;
 }
 
 #endif

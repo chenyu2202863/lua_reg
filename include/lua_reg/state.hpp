@@ -24,6 +24,20 @@ namespace luareg {
 
 		}
 
+		state_t(const state_t &rhs)
+			: is_owner_(false)
+			, state_(rhs.state_)
+		{}
+
+		state_t &operator=( const state_t &rhs )
+		{
+			assert(&rhs != this);
+			is_owner_ = false;
+			state_ = rhs.state_;
+
+			return *this;
+		}
+
 		~state_t()
 		{
 			close();

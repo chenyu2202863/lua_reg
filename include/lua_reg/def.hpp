@@ -9,9 +9,9 @@
 #include <unordered_map>
 
 #include "config.hpp"
-
-#include "traits.hpp"
 #include "state.hpp"
+
+#include "details/traits.hpp"
 #include "details/def.hpp"
 
 
@@ -121,8 +121,8 @@ namespace luareg {
 		template < typename HandlerT >
 		void reg(state_t &state, const std::string &name, HandlerT && handler)
 		{
-			typedef detail::function_traits_t<HandlerT>::args_type		tuple_t;
-			typedef detail::function_traits_t<HandlerT>::result_type	result_t;
+			typedef details::function_traits_t<HandlerT>::args_type		tuple_t;
+			typedef details::function_traits_t<HandlerT>::result_type	result_t;
 			typedef handler_impl_t<HandlerT, result_t, tuple_t>			handler_t;
 
 			reg_impl<handler_t>(state, name, std::forward<HandlerT>(handler));

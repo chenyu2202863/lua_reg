@@ -6,70 +6,31 @@
 #include "../config.hpp"
 #include "../converter.hpp"
 #include "../error.hpp"
+#include "traits.hpp"
+
 
 namespace luareg { namespace details {
 
+	template < std::uint32_t N >
+	inline void check_stack(state_t &state, std::false_type)
+	{}
 
-	void check_stack(state_t &state, std::uint32_t N)
+	template < std::uint32_t N >
+	inline void check_stack(state_t &state, std::true_type)
 	{
 		int n = ::lua_gettop(state);
 		if ( n != N )
 			throw parameter_error_t(state, "expect parameter count error ");
 	}
 
-	template < typename T >
-	struct is_normal_t
-	{
-		typedef std::true_type type;
-	};
-
-	template <>
-	struct is_normal_t<state_t>
-	{
-		typedef std::false_type type;
-	};
-
-	template <>
-	struct is_normal_t<index_t>
-	{
-		typedef std::false_type type;
-	};
-
-
-	template < std::uint32_t N >
-	struct param_count_t
-	{
-		template < typename TupleT >
-		static void count(std::uint32_t &cnt)
-		{
-			typedef typename std::tuple_element<N, TupleT>::type element_type;
-			typedef typename std::remove_cv<typename std::remove_reference<element_type>::type>::type origi_type;
-			typedef typename is_normal_t<origi_type>::type type;
-
-			cnt += std::is_same<type, std::true_type>::value ? 1 : 0;
-			param_count_t<N - 1>::count<TupleT>(cnt);
-		}
-	};
-
-	template < >
-	struct param_count_t<0>
-	{
-		template < typename TupleT >
-		static void count(std::uint32_t &cnt)
-		{
-			typedef typename std::tuple_element<0, TupleT>::type element_type;
-			typedef typename std::remove_cv<typename std::remove_reference<element_type>::type>::type origi_type;
-			typedef typename is_normal_t<origi_type>::type type;
-
-			cnt += std::is_same<type, std::true_type>::value ? 1 : 0;
-		}
-	};
 
 	template < typename TupleT >
 	std::uint32_t param_count()
 	{
 		std::uint32_t cnt = 0;
-		param_count_t<std::tuple_size<TupleT>::value - 1>::count<TupleT>(cnt);
+		
+		enum { element_size = std::tuple_size<TupleT>::value };
+		param_count_t<element_size - 1>::count<TupleT>(cnt);
 		return cnt;
 	}
 
@@ -106,7 +67,7 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static void handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack(state, param_count<TupleT>());
+			check_stack<parameter_count_t<TupleT>::value>(state, details::has_special_type_t<state_t, TupleT>::type());
 			handler();
 		}
 	};
@@ -117,7 +78,7 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static R handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack(state, param_count<TupleT>());
+			check_stack<parameter_count_t<TupleT>::value>(state, details::has_special_type_t<state_t, TupleT>::type());
 			static_assert(std::is_same<R, decltype(handler(auto_check_value_t<0, TupleT>::check(state)))>::value, "R type must same as decltype(handler())");
 			return handler(auto_check_value_t<0, TupleT>::check(state));
 		}
@@ -129,7 +90,7 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static void handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack(state, param_count<TupleT>());
+			check_stack<parameter_count_t<TupleT>::value>(state, details::has_special_type_t<state_t, TupleT>::type());
 			handler(auto_check_value_t<0, TupleT>::check(state));
 		}
 	};
@@ -140,7 +101,7 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static R handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack(state, param_count<TupleT>());
+			check_stack<parameter_count_t<TupleT>::value>(state, details::has_special_type_t<state_t, TupleT>::type());
 			return handler(
 				auto_check_value_t<0, TupleT>::check(state),
 				auto_check_value_t<1, TupleT>::check(state));
@@ -153,7 +114,7 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static void handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack(state, param_count<TupleT>());
+			check_stack<parameter_count_t<TupleT>::value>(state, details::has_special_type_t<state_t, TupleT>::type());
 			handler(
 				auto_check_value_t<0, TupleT>::check(state),
 				auto_check_value_t<1, TupleT>::check(state));
@@ -166,7 +127,7 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static R handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack(state, param_count<TupleT>());
+			check_stack<parameter_count_t<TupleT>::value>(state, details::has_special_type_t<state_t, TupleT>::type());
 			return handler(
 				auto_check_value_t<0, TupleT>::check(state),
 				auto_check_value_t<1, TupleT>::check(state),
@@ -180,7 +141,7 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static void handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack(state, param_count<TupleT>());
+			check_stack<parameter_count_t<TupleT>::value>(state, details::has_special_type_t<state_t, TupleT>::type());
 			handler(
 				auto_check_value_t<0, TupleT>::check(state),
 				auto_check_value_t<1, TupleT>::check(state),
@@ -194,7 +155,7 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static R handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack(state, param_count<TupleT>());
+			check_stack<parameter_count_t<TupleT>::value>(state, details::has_special_type_t<state_t, TupleT>::type());
 			return handler(
 				auto_check_value_t<0, TupleT>::check(state),
 				auto_check_value_t<1, TupleT>::check(state),
@@ -209,7 +170,7 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static void handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack(state, param_count<TupleT>());
+			check_stack<parameter_count_t<TupleT>::value>(state, details::has_special_type_t<state_t, TupleT>::type());
 			handler(
 				auto_check_value_t<0, TupleT>::check(state),
 				auto_check_value_t<1, TupleT>::check(state),
@@ -224,7 +185,7 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static R handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack(state, param_count<TupleT>());
+			check_stack<parameter_count_t<TupleT>::value>(state, details::has_special_type_t<state_t, TupleT>::type());
 			return handler(
 				auto_check_value_t<0, TupleT>::check(state),
 				auto_check_value_t<1, TupleT>::check(state),
@@ -240,7 +201,7 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static void handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack(state, param_count<TupleT>());
+			check_stack<parameter_count_t<TupleT>::value>(state, details::has_special_type_t<state_t, TupleT>::type());
 			handler(
 				auto_check_value_t<0, TupleT>::check(state),
 				auto_check_value_t<1, TupleT>::check(state),
@@ -257,7 +218,7 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static R handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack(state, param_count<TupleT>());
+			check_stack<parameter_count_t<TupleT>::value>(state, details::has_special_type_t<state_t, TupleT>::type());
 			return handler(
 				auto_check_value_t<0, TupleT>::check(state),
 				auto_check_value_t<1, TupleT>::check(state),
@@ -274,7 +235,7 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static void handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack(state, param_count<TupleT>());
+			check_stack<parameter_count_t<TupleT>::value>(state, details::has_special_type_t<state_t, TupleT>::type());
 			handler(
 				auto_check_value_t<0, TupleT>::check(state),
 				auto_check_value_t<1, TupleT>::check(state),

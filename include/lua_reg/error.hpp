@@ -36,7 +36,6 @@ namespace luareg {
 	}
 
 
-
 	template < typename StreamT >
 	void parse_parameter(state_t &state, int idx, StreamT &os)
 	{
@@ -83,7 +82,7 @@ namespace luareg {
 		std::string msg_;
 
 	public:
-		fatal_error_t(::lua_State *state, std::string &&msg)
+		fatal_error_t(state_t &state, std::string &&msg)
 			: state_(state)
 			, msg_(std::move(msg))
 		{}
@@ -124,7 +123,7 @@ namespace luareg {
 		std::string msg_;
 
 	public:
-		parameter_error_t(::lua_State *state, std::string && msg)
+		parameter_error_t(const state_t &state, std::string && msg)
 			: state_(state)
 			, msg_(std::move(msg))
 		{
@@ -141,7 +140,7 @@ namespace luareg {
 			msg_ += os.str();
 		}
 
-		parameter_error_t(::lua_State *state, std::string && msg, int index)
+		parameter_error_t(state_t &state, std::string && msg, int index)
 			: state_(state)
 			, msg_(std::move(msg))
 		{
@@ -187,7 +186,7 @@ namespace luareg {
 	{
 		static int handler(lua_State *state)
 		{
-			throw fatal_error_t(state, lua_tostring(state, -1));
+			throw fatal_error_t(state_t(state), lua_tostring(state, -1));
 
 			return 0;
 		}

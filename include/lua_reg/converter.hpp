@@ -33,7 +33,11 @@ namespace luareg {
 
 		static std::uint32_t to(state_t &state, T * val)
 		{
-			::lua_pushlightuserdata(state, val);
+			if( val != nullptr )
+				::lua_pushlightuserdata(state, val);
+			else
+				::lua_pushnil(state);
+
 			return 1;
 		}
 	};
