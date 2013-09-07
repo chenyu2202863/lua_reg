@@ -18,19 +18,49 @@
 
 namespace luareg {
 	
+	struct return_number_t
+	{
+		std::uint32_t num_;
+		return_number_t(std::uint32_t num)
+			: num_(num)
+		{}
+	};
+
 	template < typename T, typename EnableT = void >
 	struct convertion_t;
 
+
+	template < >
+	struct convertion_t<void *>
+	{
+		static void * from(state_t &state, int index)
+		{
+			LUAREG_ERROR(lua_isuserdata(state, index) != 0, LUA_TUSERDATA, index);
+
+			return ::lua_touserdata(state, index);
+		}
+
+		static std::uint32_t to(state_t &state, void *val)
+		{
+			if( val != nullptr )
+				::lua_pushlightuserdata(state, val);
+			else
+				::lua_pushnil(state);
+
+			return 1;
+		}
+	};
+
 	template < typename T >
-	struct convertion_t<T *>
+	struct convertion_t<T *, typename std::enable_if<!T::is_userdata>::type>
 	{
 		static T * from(state_t &state, int index)
 		{
-			LUAREG_ERROR(lua_islightuserdata(state, index) != 0);
+			LUAREG_ERROR(lua_isuserdata(state, index) != 0, LUA_TUSERDATA, index);
 
 			return static_cast<T *>(::lua_touserdata(state, index));
 		}
-
+		
 		static std::uint32_t to(state_t &state, T * val)
 		{
 			if( val != nullptr )
@@ -47,7 +77,7 @@ namespace luareg {
 	{
 		static lua_CFunction from(state_t &state, int index)
 		{
-			LUAREG_ERROR(lua_iscfunction(state, index) != 0);
+			LUAREG_ERROR(lua_iscfunction(state, index) != 0, LUA_TFUNCTION, index);
 
 			auto func = ::lua_tocfunction(state, index);
 			return func;
@@ -66,7 +96,7 @@ namespace luareg {
 	{
 		static T from(state_t &state, int index)
 		{
-			LUAREG_ERROR(::lua_isnumber(state, index) != 0);
+			LUAREG_ERROR(::lua_isnumber(state, index) != 0, LUA_TNUMBER, index);
 
 			return static_cast<T>(::lua_tonumber(state, index));
 		}
@@ -83,7 +113,7 @@ namespace luareg {
 	{
 		static bool from(state_t &state, int index)
 		{
-			LUAREG_ERROR(lua_isboolean(state, index));
+			LUAREG_ERROR(lua_isboolean(state, index), LUA_TBOOLEAN, index);
 			int n = ::lua_toboolean(state, index);
 			return n != 0;
 		}
@@ -101,7 +131,7 @@ namespace luareg {
 	{
 		static const char * from(state_t &state, int index)
 		{
-			LUAREG_ERROR(::lua_isstring(state, index));
+			LUAREG_ERROR(::lua_isstring(state, index) == 1, LUA_TSTRING, index);
 			return ::lua_tostring(state, index);
 		}
 
@@ -117,7 +147,7 @@ namespace luareg {
 	{
 		static std::string from(state_t &state, int index)
 		{
-			LUAREG_ERROR(::lua_isstring(state, index) != 0);
+			LUAREG_ERROR(::lua_isstring(state, index) != 0, LUA_TSTRING, index);
 			return ::lua_tostring(state, index);
 		}
 
@@ -133,7 +163,7 @@ namespace luareg {
 	{
 		static std::basic_string<CharT, CharTraitsT, AllocatorT> from(state_t &state, int index)
 		{
-			LUAREG_ERROR(::lua_isstring(state, index) != 0);
+			LUAREG_ERROR(::lua_isstring(state, index) != 0, LUA_TSTRING, index);
 			return ::lua_tostring(state, index);
 		}
 
@@ -153,10 +183,10 @@ namespace luareg {
 
 		static pair_t from(state_t &state, int index)
 		{
-			LUAREG_ERROR(lua_istable(state, index));
+			LUAREG_ERROR(lua_istable(state, index), LUA_TTABLE, index);
 
 			const int len = ::lua_objlen(state, index);
-			LUAREG_ERROR( len == 2);
+			assert(len == 2);
 
 			::lua_rawgeti(state, index, 1);
 			FirstT first_val = convertion_t<FirstT>::from(state, -1);
@@ -183,22 +213,20 @@ namespace luareg {
 		}
 	};
 
-	template < typename T >
-	struct convertion_t< std::pair<const T *, std::uint32_t> >
+	template < >
+	struct convertion_t< std::pair<const char *, std::uint32_t> >
 	{
-		static_assert(std::is_pod<T>::value, "T must be a pod type");
-
-		static std::pair<const T *, std::uint32_t> from(state_t &state, int index)
+		static std::pair<const char *, std::uint32_t> from(state_t &state, int index)
 		{
 			std::uint32_t len = 0;
 			const char *p = ::lua_tolstring(state, index, &len);
 
-			return std::make_pair(reinterpret_cast<const T *>(p), len / sizeof(T));
+			return std::make_pair(reinterpret_cast<const char *>(p), len / sizeof(char));
 		}
 
-		static std::uint32_t to(state_t &state, const std::pair<const T *, std::uint32_t> &val)
+		static std::uint32_t to(state_t &state, const std::pair<const char *, std::uint32_t> &val)
 		{
-			::lua_pushlstring(state, reinterpret_cast<const char *>(val.first), val.second * sizeof(T));
+			::lua_pushlstring(state, val.first, val.second * sizeof(char));
 			return 1;
 		}
 	};
@@ -210,26 +238,17 @@ namespace luareg {
 
 		static tuple_t from(state_t &state, int index)
 		{
-			LUAREG_ERROR(lua_istable(state, index));
-
-			const int len = ::lua_objlen(state, index);
-			LUAREG_ERROR(len == std::tuple_size<tuple_t>::value);
-			if( len != std::tuple_size<tuple_t>::value )
-				return tuple_t();
-
 			tuple_t val;
-			details::tuple_helper_t<tuple_t, std::tuple_size<tuple_t>::value>::from(state, index, val);
+			details::tuple_helper_t<tuple_t, std::tuple_size<tuple_t>::value - 1>::from(state, -1, val);
 
 			return val;
 		}
 
 		static std::uint32_t to(state_t &state, const tuple_t &val)
 		{
-			::lua_createtable(state, std::tuple_size<tuple_t>::value, 0);
+			details::tuple_helper_t<tuple_t, std::tuple_size<tuple_t>::value - 1>::to(state, val);
 
-			details::tuple_helper_t<tuple_t, std::tuple_size<tuple_t>::value>::to(state, val);
-
-			return 1;
+			return std::tuple_size<tuple_t>::value;
 		}
 	};
 
@@ -240,7 +259,7 @@ namespace luareg {
 
 		static vector_t from(state_t &state, int index)
 		{
-			LUAREG_ERROR(lua_istable(state, index));
+			LUAREG_ERROR(lua_istable(state, index), LUA_TTABLE, index);
 
 			vector_t vec;
 			const int len = ::lua_objlen(state, index);
@@ -279,7 +298,7 @@ namespace luareg {
 
 		static map_t from(state_t &state, int index)
 		{
-			LUAREG_ERROR(lua_istable(state, index));
+			LUAREG_ERROR(lua_istable(state, index), LUA_TTABLE, index);
 
 			map_t map_val;
 			const int len = ::lua_objlen(state, index);
@@ -315,14 +334,6 @@ namespace luareg {
 	};
 
 
-	struct return_number_t
-	{
-		std::uint32_t num_;
-		return_number_t(std::uint32_t num)
-			: num_(num)
-		{}
-	};
-
 	template < >
 	struct convertion_t< return_number_t >
 	{
@@ -355,7 +366,8 @@ namespace luareg {
 	{
 		static function_ref_t from(state_t &state, int index)
 		{
-			LUAREG_ERROR(lua_isfunction(state, index) != 0);
+			LUAREG_ERROR(lua_isfunction(state, index) != 0, LUA_TFUNCTION, index);
+			::lua_pushvalue(state, index);
 			return function_ref_t(state);
 		}
 
@@ -371,7 +383,7 @@ namespace luareg {
 	{
 		static table_ref_t from(state_t &state, int index)
 		{
-			LUAREG_ERROR(lua_istable(state, index) != 0);
+			LUAREG_ERROR(lua_istable(state, index) != 0, LUA_TTABLE, index);
 			return table_ref_t(state);
 		}
 
@@ -387,7 +399,7 @@ namespace luareg {
 	{
 		static string_ref_t from(state_t &state, int index)
 		{
-			LUAREG_ERROR(lua_isstring(state, index) != 0);
+			LUAREG_ERROR(lua_isstring(state, index) != 0, LUA_TSTRING, index);
 			return string_ref_t(state);
 		}
 

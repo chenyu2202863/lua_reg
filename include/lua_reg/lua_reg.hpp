@@ -8,5 +8,6 @@
 #include "execute.hpp"
 #include "reference.hpp"
 #include "iterator.hpp"
+#include "class.hpp"
 
 #endif

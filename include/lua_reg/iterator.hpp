@@ -1,8 +1,8 @@
 #ifndef __LUA_REG_ITERATOR_HPP
 #define __LUA_REG_ITERATOR_HPP
 
-#include <vector>
 #include <iterator>
+#include <functional>
 
 namespace luareg {
 
@@ -33,44 +33,42 @@ namespace luareg {
 		parameter_t &operator=(const parameter_t &);
 
 	public:
-		template < typename T, typename AllocatorT >
-		void get_all(std::vector<std::tuple<T, value_type_t, std::uint32_t>, AllocatorT> &values)
+		template < typename T >
+		void get_all(const std::function<void(const T &)> &handler, int start_idx, int cnt)
 		{
-			int param_num = ::lua_gettop(state_);
-			values.reserve(param_num);
-			
-			for(auto i = 1; i <= param_num; ++i)
+			for(auto i = start_idx + 1; i <= cnt + start_idx; ++i)
 			{
-				values.emplace_back(_parse_parameter<T>(state_, i));
+				_parse_parameter<T>(i, handler);
 			}
 		}
 
 	private:
 		template < typename T >
-		std::tuple<T, value_type_t, std::uint32_t> _parse_parameter(const state_t &state, int idx)
+		void _parse_parameter(int idx, const std::function<void(const T &)> &handler)
 		{
-			auto lua_type = ::lua_type(state, idx);
+			auto lua_type = ::lua_type(state_, idx);
 
 			switch(lua_type)
 			{
 			case LUA_TBOOLEAN:
 				{
-					return std::make_tuple(::lua_toboolean(state_, idx) == 1 ? true : false, value_type_t::BOOL_T, 1);
+					handler(::lua_toboolean(state_, idx) == 1);
 				}
 				break;
 			case LUA_TNUMBER:
 				{
-					return std::make_tuple(::lua_tonumber(state, idx), value_type_t::NUMBER_T, sizeof(double));
+					handler(::lua_tonumber(state_, idx));
 				}
 				break;
 			case LUA_TSTRING:
 				{
-					const char *value = lua_tostring(state, idx);
-					return std::make_tuple(value, value_type_t::STRING_T, std::strlen(value));
+					std::uint32_t len = 0;
+					const char *value = lua_tolstring(state_, idx, &len);
+					handler(value);
 				}
 				break;
 			default:
-				throw parameter_error_t(state, "parameter type is not bool/number/string type");
+				throw parameter_error_t(state_, "parameter type is not bool/number/string type");
 			}
 		}
 	};

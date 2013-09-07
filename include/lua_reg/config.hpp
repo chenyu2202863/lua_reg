@@ -9,7 +9,7 @@ extern "C"
 };
 
 #include <cassert>
-
+#include <cstdint>
 
 namespace luareg
 {

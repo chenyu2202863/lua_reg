@@ -3,6 +3,10 @@
 
 #include "config.hpp"
 
+#ifdef min
+#undef min
+#endif
+
 namespace luareg {
 
 	struct state_t
@@ -10,11 +14,12 @@ namespace luareg {
 		bool is_owner_;
 		lua_State *state_;
 
-		state_t()
+		template < typename AllocatorT = std::allocator<char> >
+		state_t(const AllocatorT &allocator = AllocatorT())
 			: is_owner_(true)
 			, state_(nullptr)
 		{
-			open();
+			open(allocator);
 		}
 
 		state_t(lua_State *state)
@@ -29,7 +34,7 @@ namespace luareg {
 			, state_(rhs.state_)
 		{}
 
-		state_t &operator=( const state_t &rhs )
+		state_t &operator=(const state_t &rhs)
 		{
 			assert(&rhs != this);
 			is_owner_ = false;
@@ -59,7 +64,8 @@ namespace luareg {
 			return state_;
 		}
 
-		void open()
+		template < typename AllocatorT >
+		void open(const AllocatorT &allocator)
 		{
 			assert(state_ == nullptr);
 
@@ -76,9 +82,44 @@ namespace luareg {
 				{LUA_DBLIBNAME,		::luaopen_debug}
 #endif
 			};
+	
+			//state_ = ::lua_open();
+			state_ = ::lua_newstate([](void *ud, void *ptr, std::size_t old_size, std::size_t new_size)->void *
+			{
+				assert(ud != nullptr);
+				AllocatorT &alloc = *static_cast<AllocatorT *>(ud);
 
-			state_ = ::lua_open();
-			for(auto i = 0; i != _countof(lualibs); ++i)
+				if( old_size != 0 && new_size != 0 )
+				{
+					auto p = alloc.allocate(new_size);
+					std::memcpy(p, ptr, std::min(new_size, old_size));
+
+					alloc.deallocate((char *)ptr, old_size);
+					ptr = nullptr;
+
+					return p;
+				}
+
+				if( new_size != 0 && old_size == 0 )
+				{
+					auto p = alloc.allocate(new_size);
+					return p;
+				}
+
+				if( old_size != 0 && new_size == 0 )
+				{
+					assert(ptr != nullptr);
+					alloc.deallocate((char *)ptr, old_size);
+					return nullptr;
+				}
+
+				assert(new_size == 0 && old_size == 0);
+
+				return nullptr;
+			}, const_cast<AllocatorT *>(&allocator));
+
+
+			for( auto i = 0; i != _countof(lualibs); ++i )
 			{
 				::lua_pushcfunction(state_, lualibs[i].func);
 				::lua_pushstring(state_, lualibs[i].name);

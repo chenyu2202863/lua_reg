@@ -67,7 +67,6 @@ namespace luareg { namespace details {
 		template < typename HandlerT >
 		static void handle(HandlerT &&handler, state_t &state)
 		{
-			check_stack<parameter_count_t<TupleT>::value>(state, details::has_special_type_t<state_t, TupleT>::type());
 			handler();
 		}
 	};

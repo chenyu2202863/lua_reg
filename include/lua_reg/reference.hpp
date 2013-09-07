@@ -11,31 +11,36 @@ namespace luareg {
 	{
 		struct function_check_t
 		{
-			static void check(lua_State *state, int ref)
+			static bool check(lua_State *state, int ref)
 			{
-				lua_rawgeti(state, LUA_REGISTRYINDEX, ref);
+				::lua_rawgeti(state, LUA_REGISTRYINDEX, ref);
 				assert(lua_isfunction(state, -1));
 				lua_pop(state, 1);
+				return true;
 			}
 		};
 
 		struct table_check_t
 		{
-			static void check(lua_State *state, int ref)
+			static bool check(lua_State *state, int ref)
 			{
-				lua_rawgeti(state, LUA_REGISTRYINDEX, ref);
+				::lua_rawgeti(state, LUA_REGISTRYINDEX, ref);
 				assert(lua_istable(state, -1));
 				lua_pop(state, 1);
+
+				return true;
 			}
 		};
 
 		struct string_check_t
 		{
-			static void check(lua_State *state, int ref)
+			static bool check(lua_State *state, int ref)
 			{
-				lua_rawgeti(state, LUA_REGISTRYINDEX, ref);
-				assert(lua_isstring(state, -1));
+				::lua_rawgeti(state, LUA_REGISTRYINDEX, ref);
+				assert(::lua_isstring(state, -1));
 				lua_pop(state, 1);
+
+				return true;
 			}
 		};
 	}
@@ -58,16 +63,13 @@ namespace luareg {
 			: state_(state)
 			, ref_(LUA_NOREF)
 		{
-			ref_ = luaL_ref(state_, LUA_REGISTRYINDEX);
+			ref_ = ::luaL_ref(state_, LUA_REGISTRYINDEX);
+			assert(ref_ != LUA_REFNIL || ref_ != LUA_NOREF);
 		}
 		
 		~reference_t() 
 		{
-			if( ref_ != LUA_NOREF ) 
-			{
-				luaL_unref(state_, LUA_REGISTRYINDEX, ref_);
-				ref_ = LUA_NOREF;
-			}
+			clear();
 		}
 
 		reference_t(reference_t && rhs)
@@ -86,28 +88,40 @@ namespace luareg {
 				state_ = rhs.state_;
 
 				rhs.ref_ = LUA_NOREF;
-				state_ = nullptr;
+				rhs.state_ = nullptr;
 			}
 
 			return *this;
 		}
 
 	private:
-		reference_t(const reference_t &);
-		reference_t &operator=(const reference_t &);
+		reference_t(const reference_t &rhs);
+		reference_t &operator=(const reference_t &rhs);
 
 
 	public:
 		bool is_valid() const
 		{
-			CheckT::check(state_, ref_);
+			assert(state_ != nullptr);
+			assert(ref_ != LUA_NOREF);
+			assert(CheckT::check(state_, ref_));
 			return ref_ != LUA_NOREF;
 		}
 
 		void get() const
 		{
+			assert(state_ != nullptr);
 			assert(ref_ != LUA_NOREF);
-			lua_rawgeti(state_, LUA_REGISTRYINDEX, ref_);
+			::lua_rawgeti(state_, LUA_REGISTRYINDEX, ref_);
+		}
+
+		void clear()
+		{
+			if( ref_ != LUA_NOREF )
+			{
+				::luaL_unref(state_, LUA_REGISTRYINDEX, ref_);
+				ref_ = LUA_NOREF;
+			}
 		}
 	};
 
