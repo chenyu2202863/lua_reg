@@ -84,6 +84,21 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\include\lua_reg\call.hpp" />
+    <ClInclude Include="..\..\..\include\lua_reg\class.hpp" />
+    <ClInclude Include="..\..\..\include\lua_reg\config.hpp" />
+    <ClInclude Include="..\..\..\include\lua_reg\converter.hpp" />
+    <ClInclude Include="..\..\..\include\lua_reg\details\converter.hpp" />
+    <ClInclude Include="..\..\..\include\lua_reg\details\dispatcher.hpp" />
+    <ClInclude Include="..\..\..\include\lua_reg\details\function.hpp" />
+    <ClInclude Include="..\..\..\include\lua_reg\details\traits.hpp" />
+    <ClInclude Include="..\..\..\include\lua_reg\error.hpp" />
+    <ClInclude Include="..\..\..\include\lua_reg\execute.hpp" />
+    <ClInclude Include="..\..\..\include\lua_reg\iterator.hpp" />
+    <ClInclude Include="..\..\..\include\lua_reg\lua_reg.hpp" />
+    <ClInclude Include="..\..\..\include\lua_reg\module.hpp" />
+    <ClInclude Include="..\..\..\include\lua_reg\reference.hpp" />
+    <ClInclude Include="..\..\..\include\lua_reg\state.hpp" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>

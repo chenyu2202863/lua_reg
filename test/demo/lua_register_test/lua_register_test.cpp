@@ -119,6 +119,12 @@ std::uint32_t test20(lua::state_t &state, const lua::index_t idx)
 	return 10;
 }
 
+void test21()
+{
+	printf(__FUNCTION__);
+}
+
+
 struct base_t
 {
 	static const bool is_userdata = true;
@@ -176,42 +182,52 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	try
 	{
-		lua::reg(state, "test0", &test0);
-		lua::reg(state, "test1", &test1);
-		lua::reg(state, "test2", &test2);
-		lua::reg(state, "test3", &test3);
-		lua::reg(state, "test4", &test4);
-		lua::reg(state, "test5", &test5);
-
 		test_t t;
-		lua::reg(state, "test6", std::ref(t), &test_t::test6);
-		lua::reg(state, "test7", &test7);
-		lua::reg(state, "test8", &test8);
-		lua::reg(state, "test9", &test9);
-		lua::reg(state, "test10", &test10);
-		lua::reg(state, "test11", std::ref(t), &test_t::test11);
-		lua::reg(state, "test12", &test12);
-		lua::reg(state, "test13", &test13);
-		lua::reg(state, "test14", &test14);
-		lua::reg(state, "test15", &test15);
-		lua::reg(state, "test16", &test16);
-		lua::reg(state, "test17", &test17);
-		lua::reg(state, "test18", &test18);
-		lua::reg(state, "test19", [](int n)->int{ return n; });
-		lua::reg(state, "test20", &test20);
 
+		// free function & class method
+		luareg::module(state, "cpp")
+			<< lua::def("test0", &test0)
+			<< lua::def("test1", &test1)
+			<< lua::def("test2", &test2)
+			<< lua::def("test3", &test3)
+			<< lua::def("test4", &test4)
+			<< lua::def("test5", &test5)
+			<< lua::def("test6", &t, &test_t::test6);
 
-		luareg::class_t<foo_t>(state, "foo_t")
-			<< luareg::constructor<int>()
-			<< luareg::destructor()
-			<< luareg::def<1>("add", &foo_t::add)
-			<< luareg::def<2>("get", &foo_t::get)
-			<< luareg::def<3>("get_pointer", &foo_t::get_pointer)
-			<< luareg::def<4>("get_base", &foo_t::get_base);
+		luareg::module(state, "cpp")
+			<< lua::def("test7", &test7)
+			<< lua::def("test8", &test8)
+			<< lua::def("test9", &test9)
+			<< lua::def("test10", &test10)
+			<< lua::def("test11", &t, &test_t::test11)
+			<< lua::def("test12", &test12)
+			<< lua::def("test13", &test13)
+			<< lua::def("test14", &test14)
+			<< lua::def("test15", &test15)
+			<< lua::def("test16", &test16)
+			<< lua::def("test17", &test17)
+			<< lua::def("test18", &test18)
+			//<< lua::def("test19", [](int n, const std::string &msg)->int{ return n; })
+			<< lua::def("test20", &test20);
 
+		base_t base;
+		luareg::module(state)
+			<< lua::def("test21", &test21)
+			<< lua::def("base_print", &base, &base_t::print);
 
-		luareg::class_t<base_t>(state, "base_t")
-			<< luareg::def<1>("print", &base_t::print);
+		// object method
+	
+		luareg::module(state, "cpp")
+			[
+				luareg::class_t<foo_t>(state, "foo_t")
+				<< luareg::constructor<int>()
+				<< luareg::destructor()
+				<< luareg::def("add", &foo_t::add)
+				<< luareg::def("get", &foo_t::get)
+				<< luareg::def("get_pointer", &foo_t::get_pointer)
+				<< luareg::def("get_base", &foo_t::get_base)
+			]
+			<< lua::def("test21", &test21);
 
 		lua::execute(state, "test.lua");
 	}

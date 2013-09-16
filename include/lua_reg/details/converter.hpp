@@ -121,7 +121,7 @@ namespace luareg { namespace details {
 
 		static void from(state_t &state, int index, tuple_t &tuple_val)
 		{
-			check_type_t<value_t>::check(state, ::lua_type(state, index));
+			check_type_t<value_t>::check(state, index);
 
 			auto val = convertion_t<value_t>::from(state, index);
 			std::get<0>(tuple_val) = std::move(val);

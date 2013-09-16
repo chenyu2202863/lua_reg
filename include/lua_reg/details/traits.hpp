@@ -145,51 +145,25 @@ namespace luareg {
 			static const std::uint32_t value = 0;
 		};
 
-
-		template < std::uint32_t N >
-		struct param_count_t
+		template < typename ...Args >
+		struct is_normal_t<std::tuple<Args...>>
 		{
-			template < typename TupleT >
-			static void count(std::uint32_t &cnt)
-			{
-				typedef typename std::tuple_element<N, TupleT>::type element_type;
-				typedef typename std::remove_cv<typename std::remove_reference<element_type>::type>::type origi_type;
-				typedef typename is_normal_t<origi_type>::type type;
-
-				cnt += std::is_same<type, std::true_type>::value ? 1 : 0;
-				param_count_t<N - 1>::count<TupleT>( cnt );
-			}
-		};
-
-		template < >
-		struct param_count_t<0>
-		{
-			template < typename TupleT >
-			static void count(std::uint32_t &cnt)
-			{
-				typedef typename std::tuple_element<0, TupleT>::type element_type;
-				typedef typename std::remove_cv<typename std::remove_reference<element_type>::type>::type origi_type;
-				typedef typename is_normal_t<origi_type>::type type;
-
-				cnt += std::is_same<type, std::true_type>::value ? 1 : 0;
-			}
-		};
-
-		template < >
-		struct param_count_t<-1>
-		{
-			template < typename TupleT >
-			static void count(std::uint32_t &cnt)
-			{
-			}
+			typedef std::true_type type;
+			static const std::uint32_t value = sizeof...(Args);
 		};
 
 
-		template < typename T >
+		template < typename ...Args >
 		struct parameter_count_t;
 
+		template <>
+		struct parameter_count_t<>
+		{
+			static const std::uint32_t value = 0;
+		};
+
 		template < typename T >
-		struct parameter_count_t<std::tuple<T>>
+		struct parameter_count_t<T>
 		{
 			typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type origi_type;
 
@@ -197,13 +171,21 @@ namespace luareg {
 		};
 
 		template < typename T, typename ...Args >
-		struct parameter_count_t<std::tuple<T, Args...>>
-			: parameter_count_t<std::tuple<Args...>>
+		struct parameter_count_t<T, Args...>
+			: parameter_count_t<Args...>
 		{
 			typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type origi_type;
 
 			static const std::uint32_t value = is_normal_t<origi_type>::value +
-				parameter_count_t<std::tuple<Args...>>::value;
+				parameter_count_t<Args...>::value;
+		};
+
+
+		template < typename ...Args >
+		struct parameter_count_t<std::tuple<Args...>>
+			: parameter_count_t<Args...>
+		{
+			static const std::uint32_t value = parameter_count_t<Args...>::value;
 		};
 
 
@@ -231,14 +213,18 @@ namespace luareg {
 			return std::get<number_of_element_from_tuple_t<T, 0, Args...>::value>(t);
 		}
 
-		template < typename T, typename TupleT >
+		template < typename T, typename EnableT = void >
 		struct has_special_type_t;
 
 		template < typename T, typename ...Args >
 		struct has_special_type_t<T, std::tuple<Args...>>
 		{
-			typedef typename std::conditional < number_of_element_from_tuple_t<T, 0, Args...>::value != std::tuple_size < std::tuple<Args... >> ::value + 1,
-				std::true_type, std::false_type>::type type;
+			typedef typename std::conditional 
+				< 
+				number_of_element_from_tuple_t<T, 0, Args...>::value != std::tuple_size < std::tuple<Args... >>::value,
+				std::true_type,
+				std::false_type
+				>::type type;
 		};
 		
 

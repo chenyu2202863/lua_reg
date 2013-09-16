@@ -112,7 +112,6 @@ namespace luareg {
 		lua_pushcfunction(state, &error_t::handler);
 		lua_insert(state, base);
 		error_index = base;
-
 		int error = ::lua_pcall(state, arg_cnt, LUA_MULTRET, error_index);
 		assert(error == 0);
 

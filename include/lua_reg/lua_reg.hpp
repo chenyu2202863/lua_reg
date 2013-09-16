@@ -3,11 +3,16 @@
 
 #include "error.hpp"
 #include "state.hpp"
-#include "def.hpp"
 #include "call.hpp"
 #include "execute.hpp"
 #include "reference.hpp"
 #include "iterator.hpp"
 #include "class.hpp"
+#include "module.hpp"
 
+
+namespace luareg {
+
+	using details::def;
+}
 #endif

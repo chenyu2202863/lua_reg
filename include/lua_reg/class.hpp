@@ -6,35 +6,22 @@
 #include "error.hpp"
 #include "converter.hpp"
 
-#include "details/def.hpp"
 #include "details/dispatcher.hpp"
+#include "details/function.hpp"
 
 namespace luareg {
 
-
-	template < std::uint32_t N, typename T, typename R, typename ...Args >
-	details::class_method_t<N, T, R, Args...> def(const std::string &handler_name, R(T::*handler)(Args...))
-	{
-		return details::class_method_t<N, T, R, Args...>(handler_name, handler);
-	}
-
-
+	
 	template < typename ...Args >
 	struct constructor_t
-	{
-		constructor_t()
-		{}
-	};
+	{};
 
 	struct destructor_t
-	{
-		destructor_t()
-		{}
-	};
+	{};
 
 	
 	template < typename ...Args >
-	constructor_t<Args...> constructor()
+	inline constructor_t<Args...> constructor()
 	{
 		return constructor_t<Args...>();
 	}
@@ -45,78 +32,104 @@ namespace luareg {
 	}
 	
 
+
 	template < typename T >
-	struct convertion_t<T *, typename std::enable_if<T::is_userdata>::type>
+	struct class_name_t
 	{
-		static std::int32_t to(state_t &state, T *val)
-		{
-			assert(val != nullptr);
-			::lua_pushlightuserdata(state, val);
-
-			luaL_getmetatable(state, details::class_name_t<T>::name_.c_str());
-			::lua_setmetatable(state, -2);
-
-			return 1;
-		}
+		static std::string name_;
 	};
+
+	template < typename T >
+	std::string class_name_t<T>::name_;
+
 
 	template < typename T >
 	struct class_t
 	{
 		state_t &state_;
-		std::map<const char *, lua_CFunction> lua_regs_;
-
+		
 		explicit class_t(state_t &state, const char *name)
 			: state_(state)
 		{
-			details::class_name_t<T>::name_ = name;
+			assert(class_name_t<T>::name_.empty());
+			class_name_t<T>::name_ = name;
 
 			if( ::luaL_newmetatable(state_, name) == 0 )
 				throw fatal_error_t(state_, "register class has fatal error");
 
 			add_constructor<T>();
 			add_destructor();
-		}
-		~class_t()
-		{
-			assert(lua_regs_.find("new") != lua_regs_.cend());
 
-			std::vector<luaL_Reg> regs;
-			std::for_each(lua_regs_.cbegin(), lua_regs_.cend(), 
-						  [&regs](const std::pair<const char *, lua_CFunction> &val)
-			{
-				regs.push_back(luaL_Reg{val.first, val.second});
-			});
-			regs.push_back(luaL_Reg{ nullptr, nullptr });
-
-			::luaL_register(state_, nullptr, regs.data());
 			::lua_pushvalue(state_, -1);
 			::lua_setfield(state_, -1, "__index");
-			::lua_setglobal(state_, details::class_name_t<T>::name_.c_str());
 		}
 
-		template < std::uint32_t N, typename R, typename ...Args >
-		class_t<T> &operator<<(const details::class_method_t<N, T, R, Args...> &method)
+		template < typename R, typename T, typename ...Args >
+		class_t &operator<<(const details::class_function_t<R, T, Args...> &func)
 		{
-			typedef details::class_method_t<N, T, R, Args...> method_t;
-			lua_regs_[method.handler_name_.c_str()] = &method_t::on_handler;
+			typedef typename details::class_function_t<R, T, Args...>::function_t function_t;
+
+			auto lambda = [](lua_State *l)->int
+			{
+				state_t state(l);
+
+				T *obj = static_cast<T *>(::luaL_checkudata(state, 1, class_name_t<T>::name_.c_str()));
+				assert(obj != nullptr);
+				if( !obj )
+					throw parameter_error_t(state, "class method on handler error");
+
+				function_t *func = static_cast<function_t *>(::lua_touserdata(state, lua_upvalueindex(1)));
+
+				return details::call(state, obj, *func);
+			};
+
+			::lua_pushlightuserdata(state_, (void *)(&func.function_));
+			::lua_pushcclosure(state_, lambda, 1);
+			::lua_setfield(state_, -2, func.name_);
 
 			return *this;
 		}
 
 		template < typename ...Args >
-		class_t<T> &operator<<(const constructor_t<Args...> &method)
+		class_t &operator<<(const constructor_t<Args...> &method)
 		{
-			typedef details::constructor_t<T, Args...> constructor_t;
-			lua_regs_["new"] = &constructor_t::on_handler;
+			typedef std::tuple<Args...> tuple_t;
+
+			lua_pushcfunction(state_, [](lua_State *l)->int
+			{
+				state_t state(l);
+				T * val = static_cast<T *>(::lua_newuserdata(state, sizeof(T)));
+				assert(val != nullptr);
+				if( !val )
+					throw parameter_error_t(state, "lua_checkudata error:");
+
+				luaL_getmetatable(state, class_name_t<T>::name_.c_str());
+				::lua_setmetatable(state, -2);
+
+				details::call(state, val, tuple_t());
+
+				return 1;
+			});
+			::lua_setfield(state_, -2, "new");
 
 			return *this;
 		}
 
-		class_t<T> &operator<<(const destructor_t &method)
+		class_t &operator<<(const destructor_t &method)
 		{
-			typedef details::destructor_t<T> destructor_t;
-			lua_regs_["__gc"] = &destructor_t::on_handler;
+			lua_pushcfunction(state_, [](lua_State *l)->int
+			{
+				state_t state(l);
+
+				T *val = static_cast<T *>(::luaL_checkudata(state, 1, class_name_t<T>::name_.c_str()));
+				assert(val != nullptr);
+				if( !val )
+					throw parameter_error_t(state, "lua_checkudata error:");
+
+				val->~T();
+				return 0;
+			});
+			::lua_setfield(state_, -2, "__gc");
 
 			return *this;
 		}
@@ -125,7 +138,7 @@ namespace luareg {
 		template < typename U >
 		void add_constructor(typename std::enable_if<std::has_default_constructor<U>::value>::type * = nullptr)
 		{
-			lua_regs_.insert({"new", &class_t<U>::construct<0>});
+			*this << constructor<>();
 		}
 
 		template < typename U >
@@ -135,52 +148,10 @@ namespace luareg {
 
 		void add_destructor()
 		{
-			lua_regs_.insert({"__gc", &class_t<T>::destroy});
-		}
-
-		template < std::uint32_t N >
-		static int construct(lua_State *state)
-		{
-			static_assert(std::has_default_constructor<T>::value, "T must be a default constructor");
-
-			T *udata = static_cast<T *>(::lua_newuserdata(state, sizeof(T)));
-			assert(udata);
-			new (udata) T();
-
-			luaL_getmetatable(state, details::class_name_t<T>::name_.c_str());
-			::lua_setmetatable(state, -2);
-
-			return 1;
-		}
-
-
-		static int destroy(lua_State *state)
-		{
-			T *foo = static_cast<T *>(::luaL_checkudata(state, 1, details::class_name_t<T>::name_.c_str()));
-			assert(foo != nullptr);
-			if( !foo )
-				throw parameter_error_t(state, "lua_checkudata error:");
-			
-			foo->~T();
-			return 0;
+			*this << destructor();
 		}
 	};
 
-
-	struct class_functor_t
-	{
-		std::uint32_t index_;
-		std::map<std::uint32_t, details::handler_base_ptr> handlers_;
-
-		template < typename T, typename R, typename ...Args >
-		void add_handler(R(T::*func)(Args && ...))
-		{
-			typedef R(T::*handler_t)(Args && ...);
-
-			typedef std::tuple<Args...> tuple_t;
-			typedef handler_impl_t<handler_t, R, tuple_t>
-		}
-	};
 }
 
 #endif

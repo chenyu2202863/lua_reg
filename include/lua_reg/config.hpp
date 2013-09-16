@@ -10,6 +10,7 @@ extern "C"
 
 #include <cassert>
 #include <cstdint>
+#include <tuple>
 
 namespace luareg
 {

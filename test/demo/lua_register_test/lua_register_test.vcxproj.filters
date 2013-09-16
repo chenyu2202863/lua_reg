@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="luareg">
+      <UniqueIdentifier>{f5b93a67-78e0-425b-801c-99a24391780b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="luareg\details">
+      <UniqueIdentifier>{4c3c22dc-0785-41c9-aca6-15f44bd4d7af}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -23,6 +29,51 @@
     </ClInclude>
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\call.hpp">
+      <Filter>luareg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\class.hpp">
+      <Filter>luareg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\config.hpp">
+      <Filter>luareg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\converter.hpp">
+      <Filter>luareg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\error.hpp">
+      <Filter>luareg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\execute.hpp">
+      <Filter>luareg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\iterator.hpp">
+      <Filter>luareg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\lua_reg.hpp">
+      <Filter>luareg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\reference.hpp">
+      <Filter>luareg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\state.hpp">
+      <Filter>luareg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\details\converter.hpp">
+      <Filter>luareg\details</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\details\dispatcher.hpp">
+      <Filter>luareg\details</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\details\traits.hpp">
+      <Filter>luareg\details</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\module.hpp">
+      <Filter>luareg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\details\function.hpp">
+      <Filter>luareg\details</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

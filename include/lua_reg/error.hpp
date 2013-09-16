@@ -33,6 +33,27 @@ namespace luareg {
 		}
 	}
 
+	template < typename OStreamT >
+	void traverse_table(state_t &state, int index, OStreamT &os)
+	{
+		::lua_pushnil(state);
+
+		while( ::lua_next(state, index) )
+		{
+			::lua_pushvalue(state, -2);
+	
+			const char* key = ::lua_tostring(state, -1);
+			const char* value = ::lua_tostring(state, -2);
+	
+			const char *key_msg = key != nullptr ? key : ::lua_typename(state, ::lua_type(state, -1));
+			const char *value_msg = value != nullptr ? value : ::lua_typename(state, ::lua_type(state, -2));
+			
+			os << "key[" << key_msg << "] " 
+				<< "value[" << value_msg << "]" << std::endl;
+
+			::lua_pop(state, 2);
+		}
+	}
 
 	template < typename StreamT >
 	void parse_parameter(state_t &state, int idx, StreamT &os)
@@ -57,7 +78,8 @@ namespace luareg {
 			os << lua_tostring(state, idx);
 			break;
 		case LUA_TTABLE:
-			os << "lua table";
+			//os << "lua table";
+			traverse_table(state, idx, os);
 			break;
 		case LUA_TFUNCTION:
 			os << "lua function[" << ::lua_tocfunction(state, idx) << "]";
@@ -72,6 +94,20 @@ namespace luareg {
 			os << "unknown type & value";
 		}
 	}
+
+
+	template < typename OStreamT >
+	void dump_parameter(state_t &state, OStreamT &os)
+	{
+		int param_num = ::lua_gettop(state);
+		for( auto i = 1; i <= param_num; ++i )
+		{
+			parse_parameter(state, i, os);
+			os << std::endl;
+		}
+	}
+
+	void error_report(state_t &state, bool suc, int type, int idx, const std::string &msg);
 
 	class fatal_error_t
 		: public std::exception
@@ -128,12 +164,7 @@ namespace luareg {
 			std::ostringstream os;
 			os << std::endl << "lua parameter:" << std::endl;
 
-			int param_num = ::lua_gettop(state_);
-			for (auto i = 1; i <= param_num; ++i)
-			{
-				parse_parameter(state_, i, os);
-				os << std::endl;
-			}
+			dump_parameter(state_, os);
 
 			msg_ += os.str();
 		}

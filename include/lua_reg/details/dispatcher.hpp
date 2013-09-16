@@ -1,55 +1,187 @@
 #ifndef __LUA_REG_DISPATCHER_DETAILS_HPP
 #define __LUA_REG_DISPATCHER_DETAILS_HPP
 
+#include "../config.hpp"
 #include "traits.hpp"
-#include "def.hpp"
 
 
 namespace luareg { namespace details {
 
 
-	struct handler_base_t
+	template < typename R, typename T, typename ...Args >
+	struct object_wrapper_t
 	{
-		virtual ~handler_base_t(){}
-		virtual std::int32_t handle(state_t &state) = 0;
-	};
-	typedef std::shared_ptr<handler_base_t> handler_base_ptr;
+		using is_constructor_t = std::false_type;
+		using return_t = R;
+		using handler_t = R(T::*)(Args...);
 
-	template < typename HandlerT, typename R, typename TupleT >
-	struct handler_impl_t
-		: handler_base_t
-	{
-		typedef R return_t;
-		typedef TupleT tuple_t;
+		typedef std::tuple<typename std::remove_cv<typename std::remove_reference<Args>::type>::type...> params_t;
+		typedef std::tuple<Args...> tuple_t;
 
-		HandlerT handler_;
-		handler_impl_t(HandlerT && handler)
-			: handler_(std::move(handler))
+		T *obj_;
+		handler_t handler_;
+
+		object_wrapper_t(T *obj, handler_t handler)
+			: obj_(obj)
+			, handler_(handler)
+		{}
+
+		template < typename ...Params >
+		R operator()(Params &&...param) const
 		{
-
-		}
-
-		virtual std::int32_t handle(state_t &state)
-		{
-			enum
-			{
-				TUPLE_SIZE = std::tuple_size<tuple_t>::value
-			};
-
-			return details::return_handle_t<TUPLE_SIZE, return_t, tuple_t>::handle(handler_, state);
+			return (obj_->*handler_)(std::forward<Params>(param)...);
 		}
 	};
 
-
-
-	template < typename T >
-	struct class_name_t
+	template < typename R, typename ...Args >
+	struct function_wrapper_t
 	{
-		static std::string name_;
+		using is_constructor_t = std::false_type;
+		using return_t = R;
+		using handler_t = R(*)(Args...);
+
+		typedef std::tuple<typename std::remove_cv<typename std::remove_reference<Args>::type>::type...> params_t;
+		typedef std::tuple<Args...> tuple_t;
+
+		handler_t handler_;
+
+		function_wrapper_t(handler_t handler)
+			: handler_(handler)
+		{}
+
+		template < typename ...Params >
+		R operator()(Params &&...param) const
+		{
+			return (*handler_)(std::forward<Params>(param)...);
+		}
 	};
 
-	template < typename T >
-	std::string class_name_t<T>::name_;
+	template < typename T, typename ...Args >
+	struct constructor_wrapper_t
+	{
+		using is_constructor_t = std::true_type;
+		typedef void return_t;
+		T *obj_;
+
+		typedef std::tuple<typename std::remove_cv<typename std::remove_reference<Args>::type>::type...> params_t;
+		typedef std::tuple<Args...> tuple_t;
+
+		constructor_wrapper_t(T *obj)
+			: obj_(obj)
+		{}
+
+		template < typename ...Params >
+		void operator()(Params &&...param) const
+		{
+			::new (obj_) T(std::forward<Params>(param)...);
+		}
+	};
+
+	template < typename R, typename T, typename ...Args >
+	object_wrapper_t<R, T, Args...> make_obj(T *obj, R(T::*handler)(Args...))
+	{
+		return object_wrapper_t<R, T, Args...>(obj, handler);
+	}
+
+	template < typename R, typename ...Args >
+	function_wrapper_t<R, Args...> make_obj(R(*handler)(Args...))
+	{
+		return function_wrapper_t<R, Args...>(handler);
+	}
+
+
+	template < typename T, typename ...Args >
+	constructor_wrapper_t<T, Args...> make_obj(T *obj, const std::tuple<Args...> &)
+	{
+		return constructor_wrapper_t<T, Args...>(obj);
+	}
+
+
+	template < std::uint32_t N >
+	struct caller_t;
+
+	template < >
+	struct caller_t<0>
+	{
+		template < typename T >
+		static typename T::return_t call(const T &val, std::tuple<> &args)
+		{
+			return val();
+		}
+	};
+
+	template < >
+	struct caller_t<1>
+	{
+		template < typename T, typename ...Args >
+		static typename T::return_t call(const T &val, std::tuple<Args...> &args)
+		{
+			return val(std::get<0>(args));
+		}
+	};
+
+	template < >
+	struct caller_t<2>
+	{
+		template < typename T, typename ...Args >
+		static typename T::return_t call(const T &val, std::tuple<Args...> &args)
+		{
+			return val(std::get<0>(args), std::get<1>(args));
+		}
+	};
+
+	template < >
+	struct caller_t<3>
+	{
+		template < typename T, typename ...Args >
+		static typename T::return_t call(const T &val, std::tuple<Args...> &args)
+		{
+			return val(std::get<0>(args), std::get<1>(args), std::get<2>(args));
+		}
+	};
+
+	template < >
+	struct caller_t<4>
+	{
+		template < typename T, typename ...Args >
+		static typename T::return_t call(const T &val, std::tuple<Args...> &args)
+		{
+			return val(std::get<0>(args), std::get<1>(args), std::get<2>(args), std::get<3>(args));
+		}
+	};
+
+	template < >
+	struct caller_t<5>
+	{
+		template < typename T, typename ...Args >
+		static typename T::return_t call(const T &val, std::tuple<Args...> &args)
+		{
+			return val(std::get<0>(args), std::get<1>(args), std::get<2>(args), std::get<3>(args), std::get<4>(args));
+		}
+	};
+
+	template < >
+	struct caller_t<6>
+	{
+		template < typename T, typename ...Args >
+		static typename T::return_t call(const T &val, std::tuple<Args...> &args)
+		{
+			return val(std::get<0>(args), std::get<1>(args), std::get<2>(args), std::get<3>(args), std::get<4>(args), std::get<5>(args));
+		}
+	};
+
+
+	template < std::uint32_t N >
+	inline void check_stack(state_t &state, std::int32_t offset, std::true_type)
+	{}
+
+	template < std::uint32_t N >
+	inline void check_stack(state_t &state, std::int32_t offset, std::false_type)
+	{
+		int n = ::lua_gettop(state) - offset;
+		if( n != N )
+			throw parameter_error_t(state, "expect parameter count error ");
+	}
 
 
 	template < std::uint32_t N >
@@ -83,282 +215,70 @@ namespace luareg { namespace details {
 		}
 	};
 
-	template < std::uint32_t N >
-	struct method_caller_t;
-
-	template < >
-	struct method_caller_t<0>
-	{
-		template < typename T, typename R >
-		static R call(T *obj, R(T::*handler)(), const std::tuple<> &args)
-		{
-			return (obj->*handler)();
-		}
-	};
-
-	template < >
-	struct method_caller_t<1>
-	{
-		template < typename T, typename R, typename ...Args >
-		static R call(T *obj, R(T::*handler)(Args...), const std::tuple<Args...> &args)
-		{
-			return (obj->*handler)(std::get<0>(args));
-		}
-	};
-
-	template < >
-	struct method_caller_t<2>
-	{
-		template < typename T, typename R, typename ...Args >
-		static R call(T *obj, R(T::*handler)(Args...), const std::tuple<Args...> &args)
-		{
-			return (obj->*handler)(std::get<0>(args),
-								   std::get<1>(args));
-		}
-	};
-
-	template < >
-	struct method_caller_t<3>
-	{
-		template < typename T, typename R, typename ...Args >
-		static R call(T *obj, R(T::*handler)(Args...), const std::tuple<Args...> &args)
-		{
-			return (obj->*handler)(std::get<0>(args),
-								   std::get<1>(args),
-								   std::get<2>(args));
-		}
-	};
-
-	template < >
-	struct method_caller_t<4>
-	{
-		template < typename T, typename R, typename ...Args >
-		static R call(T *obj, R(T::*handler)(Args...), const std::tuple<Args...> &args)
-		{
-			return (obj->*handler)(std::get<0>(args),
-								   std::get<1>(args),
-								   std::get<2>(args),
-								   std::get<3>(args));
-		}
-	};
-
-	template < >
-	struct method_caller_t<5>
-	{
-		template < typename T, typename R, typename ...Args >
-		static R call(T *obj, R(T::*handler)(Args...), const std::tuple<Args...> &args)
-		{
-			return (obj->*handler)(std::get<0>(args),
-								   std::get<1>(args),
-								   std::get<2>(args),
-								   std::get<3>(args),
-								   std::get<4>(args));
-		}
-	};
-
-	template < >
-	struct method_caller_t<6>
-	{
-		template < typename T, typename R, typename ...Args >
-		static R call(T *obj, R(T::*handler)(Args...), const std::tuple<Args...> &args)
-		{
-			return (obj->*handler)(std::get<0>(args),
-								   std::get<1>(args),
-								   std::get<2>(args),
-								   std::get<3>(args),
-								   std::get<4>(args),
-								   std::get<5>(args));
-		}
-	};
-
-
-	template < std::uint32_t N >
-	struct constructor_caller_t;
-
-	template < >
-	struct constructor_caller_t<0>
-	{
-		template < typename T >
-		static void call(T *obj, const std::tuple<> &args)
-		{
-			::new (obj) T();
-		}
-	};
-
-	template < >
-	struct constructor_caller_t<1>
-	{
-		template < typename T, typename ...Args >
-		static void call(T *obj, const std::tuple<Args...> &args)
-		{
-			::new (obj) T(std::get<0>(args));
-		}
-	};
-
-	template < >
-	struct constructor_caller_t<2>
-	{
-		template < typename T, typename ...Args >
-		static void call(T *obj, const std::tuple<Args...> &args)
-		{
-			::new (obj) T(std::get<0>(args),
-						 std::get<1>(args));
-		}
-	};
-
-	template < >
-	struct constructor_caller_t<3>
-	{
-		template < typename T, typename ...Args >
-		static void call(T *obj, const std::tuple<Args...> &args)
-		{
-			::new (obj) T(std::get<0>(args), 
-						  std::get<1>(args),
-						  std::get<2>(args));
-		}
-	};
-
-	template < >
-	struct constructor_caller_t<4>
-	{
-		template < typename T, typename ...Args >
-		static void call(T *obj, const std::tuple<Args...> &args)
-		{
-			::new (obj) T(std::get<0>(args),
-						  std::get<1>(args),
-						  std::get<2>(args),
-						  std::get<3>(args));
-		}
-	};
-
-
-	template < typename ...Args >
-	void parse_args(state_t &state, std::int32_t index, std::tuple<Args...> &args)
-	{
-		typedef std::tuple<Args...> tuple_t;
-		enum
-		{
-			TUPLE_SIZE = std::tuple_size<tuple_t>::value == 0 ? 0 : std::tuple_size<tuple_t>::value - 1
-		};
-
-		args_parser_t<TUPLE_SIZE>::parse(state, index, args);
-	}
-
-	template < typename T, typename R, typename ...Args >
-	struct call_method_t
-	{
-		static std::int32_t call(state_t &state, T *obj, R(T::*handler)(Args...), const std::tuple<Args...> &args)
-		{
-			typedef std::tuple<Args...> tuple_t;
-			enum
-			{
-				TUPLE_SIZE = std::tuple_size<tuple_t>::value == 0 ? 0 : std::tuple_size<tuple_t>::value - 1
-			};
-
-			R ret = method_caller_t<TUPLE_SIZE>::call(obj, handler, args);
-
-			return convertion_t<R>::to(state, ret);
-		}
-	};
-
-	template < typename T, typename ...Args >
-	struct call_method_t<T, void, Args...>
-	{
-		static std::int32_t call(state_t &state, T *obj, void (T::*handler)(Args...), const std::tuple<Args...> &args)
-		{
-			typedef std::tuple<Args...> tuple_t;
-			method_caller_t<std::tuple_size<tuple_t>::value>::call(obj, handler, args);
-
-			return 0;
-		}
-	};
-
-
-	template < std::uint32_t N, typename T, typename R, typename ...Args >
-	struct class_method_t
-	{
-		typedef R(T::*handler_t)(Args...);
-
-		static const std::uint32_t value = N;
-		static std::string handler_name_;
-		static handler_t handler_;
-
-		class_method_t(const std::string &handler_name, handler_t handler)
-		{
-			handler_name_ = handler_name;
-			handler_ = handler;
-		}
-
-		static int on_handler(lua_State *lua_state)
-		{
-			state_t state = lua_state;
-			T *val = static_cast<T *>(::luaL_checkudata(state, 1, class_name_t<T>::name_.c_str()));
-			assert(val != nullptr);
-			if( !val )
-				throw parameter_error_t(state, "class method on handler error");
-
-			typedef std::tuple<Args...> tuple_t;
-			tuple_t args;
-
-			check_stack<std::tuple_size<tuple_t>::value + 1>(state, has_special_type_t<state_t, tuple_t>::type());
-			parse_args(state, std::tuple_size<tuple_t>::value + 1, args);
-
-			return call_method_t<T, R, Args...>::call(state, val, handler_, args);
-		}
-	};
-
-	template < std::uint32_t N, typename T, typename R, typename ...Args >
-	std::string class_method_t<N, T, R, Args...>::handler_name_;
-
-	template < std::uint32_t N, typename T, typename R, typename ...Args >
-	typename class_method_t<N, T, R, Args...>::handler_t class_method_t<N, T, R, Args...>::handler_;
-
-
-	template < typename T, typename ...Args >
-	struct constructor_t
-	{
-		typedef std::tuple<Args...> tuple_t;
-
-
-		static std::int32_t on_handler(lua_State *lua_state)
-		{
-			state_t state = lua_state;
-			T * val = static_cast<T *>(::lua_newuserdata(state, sizeof(T)));
-			assert(val != nullptr);
-			if( !val )
-				throw parameter_error_t(state, "lua_checkudata error:");
-
-			luaL_getmetatable(state, details::class_name_t<T>::name_.c_str());
-			::lua_setmetatable(state, -2);
-
-			tuple_t args;
-			check_stack<std::tuple_size<tuple_t>::value + 1>(state, std::false_type());
-			parse_args(state, std::tuple_size<tuple_t>::value + 1, args);
-
-			constructor_caller_t<std::tuple_size<tuple_t>::value>::call(val, args);
-
-			return 1;
-		}
-	};
 
 
 	template < typename T >
-	struct destructor_t
+	typename T::return_t call_impl(state_t &state, const T &obj, std::int32_t offset)
 	{
-		static std::int32_t on_handler(lua_State *lua_state)
+		typedef typename T::params_t args_t;
+		typedef typename T::tuple_t tuple_t;
+		typedef typename T::is_constructor_t is_constructor_t;
+
+		check_stack<details::parameter_count_t<tuple_t>::value>(state, offset, is_constructor_t());
+		
+		enum
 		{
-			state_t state = lua_state;
+			TUPLE_SIZE = std::tuple_size<args_t>::value == 0 ? 0 : std::tuple_size<args_t>::value - 1
+		};
+		args_t args;
+		args_parser_t<TUPLE_SIZE>::parse(state, std::tuple_size<args_t>::value + offset, args);
 
-			T *val = static_cast<T *>(::luaL_checkudata(state, 1, details::class_name_t<T>::name_.c_str()));
-			assert(val != nullptr);
-			if( !val )
-				throw parameter_error_t(state, "lua_checkudata error:");
+		return caller_t<std::tuple_size<args_t>::value>::call(obj, args);
+	}
 
-			val->~T();
 
-			return 0;
-		}
-	};
+	template < typename T, typename ...Args >
+	inline void call(state_t &state, T *obj, const std::tuple<Args...> &args)
+	{
+		call_impl(state, make_obj(obj, args), 1);
+	}
+
+
+	template < typename R, typename T, typename ...Args >
+	std::int32_t call(state_t &state, T *obj, R(T::*handler)(Args...),
+					  typename std::enable_if<!std::is_same<R, void>::value>::type * = nullptr)
+	{
+		return convertion_t<R>::to(state, call_impl(state, make_obj(obj, handler), 1));
+	}
+
+	template < typename R, typename T, typename ...Args >
+	std::int32_t call(state_t &state, T *obj, R(T::*handler)(Args...),
+					  typename std::enable_if<std::is_same<R, void>::value>::type * = nullptr)
+	{
+		call_impl(state, make_obj(obj, handler), 1);
+
+		return 0;
+	}
+
+
+
+	template < typename R, typename ...Args >
+	std::int32_t call(state_t &state, R(*handler)(Args...),
+					  typename std::enable_if<!std::is_same<R, void>::value>::type * = nullptr)
+	{
+		return convertion_t<R>::to(state, call_impl(state, make_obj(handler), 0));
+	}
+
+
+	template < typename R, typename ...Args >
+	std::int32_t call(state_t &state, R(*handler)(Args...),
+					  typename std::enable_if<std::is_same<R, void>::value>::type * = nullptr)
+	{
+		call_impl(state, make_obj(handler), 0);
+
+		return 0;
+	}
+
 }
 }
 
