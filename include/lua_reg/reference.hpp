@@ -94,9 +94,8 @@ namespace luareg {
 			return *this;
 		}
 
-	private:
-		reference_t(const reference_t &rhs);
-		reference_t &operator=(const reference_t &rhs);
+		reference_t(const reference_t &) = delete;
+		reference_t &operator=(const reference_t &) = delete;
 
 
 	public:

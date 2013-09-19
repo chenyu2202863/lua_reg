@@ -46,6 +46,9 @@ namespace luareg {
 			lua_pop(state_, 1);
 		}
 
+		module_t(const module_t &) = delete;
+		module_t &operator=(const module_t &) = delete;
+
 	public:
 		template < typename R, typename ...Args >
 		module_t &operator<<(const details::free_function_t<R, Args...> &func)

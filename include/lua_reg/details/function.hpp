@@ -61,58 +61,7 @@ namespace luareg { namespace details {
 	};
 
 
-	template < typename R, typename ...Args >
-	inline free_function_t<R, Args...> def(const char *name, R(*func)(Args...))
-	{
-		return free_function_t<R, Args...>(name, func);
-	}
-
-	template < typename HandlerT >
-	inline auto def(const char *name, HandlerT &&handler)->
-		typename lambda_function_t<HandlerT, typename details::function_traits_t<HandlerT>::result_type, typename details::function_traits_t<HandlerT>::args_type>::class_function_impl_t
-	{
-		typedef typename details::function_traits_t<HandlerT>::args_type	tuple_t;
-		typedef typename details::function_traits_t<HandlerT>::result_type	R;
-
-		typedef lambda_function_t<HandlerT, R, tuple_t> lambda_t;
-		return lambda_t(name, std::forward<HandlerT>(handler));
-	}
-
-	template < typename R, typename T, typename ...Args >
-	inline class_function_t<R, T, Args...> def(const char *name, T *obj, R(T::*func)(Args...))
-	{
-		return class_function_t<R, T, Args...>(name, obj, func);
-	}
-
-	template < typename R, typename T, typename ...Args >
-	inline class_function_t<R, T, Args...> def(const char *name, T *obj, R(T::*func)(Args...) const)
-	{
-		return class_function_t<R, T, Args...>(name, obj, (R(T::*)(Args...))func);
-	}
-
-	template < typename R, typename T, typename ...Args >
-	inline class_function_t<R, T, Args...> def(const char *name, T *obj, R(T::*func)(Args...) volatile)
-	{
-		return class_function_t<R, T, Args...>(name, obj, (R(T::*)(Args...))func);
-	}
-
-	template < typename R, typename T, typename ...Args >
-	inline class_function_t<R, T, Args...> def(const char *name, R(T::*func)(Args...))
-	{
-		return class_function_t<R, T, Args...>(name, nullptr, func);
-	}
-
-	template < typename R, typename T, typename ...Args >
-	inline class_function_t<R, T, Args...> def(const char *name, R(T::*func)(Args...) const)
-	{
-		return class_function_t<R, T, Args...>(name, nullptr, (R(T::*)(Args...))func);
-	}
-
-	template < typename R, typename T, typename ...Args >
-	inline class_function_t<R, T, Args...> def(const char *name, R(T::*func)(Args...) volatile)
-	{
-		return class_function_t<R, T, Args...>(name, nullptr, (R(T::*)(Args...))func);
-	}
+	
 }}
 
 

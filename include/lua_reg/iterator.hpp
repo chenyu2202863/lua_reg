@@ -63,8 +63,8 @@ namespace luareg {
 			case LUA_TSTRING:
 				{
 					std::uint32_t len = 0;
-					const char *value = lua_tolstring(state_, idx, &len);
-					handler(value);
+					const char *value = ::lua_tolstring(state_, idx, &len);
+					handler(std::make_pair(value, len));
 				}
 				break;
 			default:
