@@ -11,142 +11,66 @@ Use of this source code is governed by a BSD-style license that can be found in 
 
 设计目标：接口简单、不依赖第三方库
 
-示例：
-
-void test1(int n)
-{
-
-}
-
-int test2(int n, double d, const std::string &msg)
-{
-	return 10;
-}
-
-std::string test3(const std::string &msg)
-{
-	return msg;
-}
-
-bool test4(bool suc)
-{
-	return !suc;
-}
-
-std::string test5(const std::string &msg, const std::string &msg2)
-{
-	return msg + msg2;
-}
-
-
-struct test_t
-{
-	char test6(bool suc)
-	{
-		return 'a';
-	}
-
-	int test11() const
-	{
-		return 1;
-	}
-};
-
-
-void test7(const std::pair<const char *, std::uint32_t> &buffer)
-{
-
-}
-
-std::vector<int> test8(const std::vector<int> &v)
-{
-	return v;
-}
-
-std::vector<std::pair<int, std::string>> test9(int n, const std::vector < std::pair < int, std::string >> &v)
-{
-	return v;
-}
-
-std::pair<std::string, std::uint32_t> test10(const std::pair<std::string, std::uint32_t> &val)
-{
-	return val;
-}
-
-std::pair<std::string, std::pair<std::uint32_t, std::uint32_t>> test12(const std::vector < std::pair < std::string, std::pair<std::uint32_t, std::uint32_t >> > &val)
-{
-	return val.front();
-}
-
-std::tuple<int, std::string, bool, std::pair<int, std::string>> test13(const std::tuple < int, std::string, bool, std::pair < int, std::string >> &val)
-{
-	return val;
-}
-
-
-std::map<int, std::string> test14(const std::map<int, std::string> &val)
-{
-	return val;
-}
-
-
-void test15(const lua::function_ref_t &func_ref, lua::state_t &state)
-{
-	lua::call(state, func_ref);
-}
-
-void test16(const lua::function_ref_t &func_ref, lua::state_t &state)
-{
-	lua::call(state, func_ref, 10, "test");
-}
-
-void test17(const lua::function_ref_t &func_ref, lua::string_ref_t &string_ref, lua::state_t &state)
-{
-	auto string_ref1 = std::move(string_ref);
-	lua::call(state, func_ref, string_ref1);
-}
-
-void test18(const lua::function_ref_t &func_ref, const lua::function_ref_t &func_param, lua::state_t &state)
-{
-	lua::call(state, func_ref, func_param);
-}
-
-int _tmain(int argc, _TCHAR* argv[])
-{
-	luareg::state_t state;
+	std::allocator<char> std_allocator;
+	luareg::state_t state(std_allocator);
 
 	try
 	{
-		lua::reg(state, "test1", &test1);
-		lua::reg(state, "test2", &test2);
-		lua::reg(state, "test3", &test3);
-		lua::reg(state, "test4", &test4);
-		lua::reg(state, "test5", &test5);
-
 		test_t t;
-		lua::reg(state, "test6", std::ref(t), &test_t::test6);
-		lua::reg(state, "test7", &test7);
-		lua::reg(state, "test8", &test8);
-		lua::reg(state, "test9", &test9);
-		lua::reg(state, "test10", &test10);
-		//lua::reg(state, "test11", std::cref(t), &test_t::test11);
-		lua::reg(state, "test12", &test12);
-		lua::reg(state, "test13", &test13);
-		lua::reg(state, "test14", &test14);
-		lua::reg(state, "test15", &test15);
-		lua::reg(state, "test16", &test16);
-		lua::reg(state, "test17", &test17);
-		lua::reg(state, "test18", &test18);
-		lua::reg(state, "test19", [](int n)->int{ return n; });
+
+		// free function & class method
+		luareg::module(state, "cpp")
+			<< lua::def("test0", &test0)
+			<< lua::def("test1", &test1)
+			<< lua::def("test2", &test2)
+			<< lua::def("test3", &test3)
+			<< lua::def("test4", &test4)
+			<< lua::def("test5", &test5)
+			<< lua::def("test6", &t, &test_t::test6);
+
+		luareg::module(state, "cpp")
+			<< lua::def("test7", &test7)
+			<< lua::def("test8", &test8)
+			<< lua::def("test9", &test9)
+			<< lua::def("test10", &test10)
+			<< lua::def("test11", &t, &test_t::test11)
+			<< lua::def("test12", &test12)
+			<< lua::def("test13", &test13)
+			<< lua::def("test14", &test14)
+			<< lua::def("test15", &test15)
+			<< lua::def("test16", &test16)
+			<< lua::def("test17", &test17)
+			<< lua::def("test18", &test18)
+			//<< lua::def("test19", [](int n, const std::string &msg)->int{ return n; })
+			<< lua::def("test20", &test20);
+
+		base_t base;
+		luareg::module(state)
+			<< lua::def("test21", &test21)
+			<< lua::def("base_print", &base, &base_t::print);
+
+		// object method
+	
+		luareg::module(state, "cpp")
+			[
+				luareg::class_t<foo_t>(state, "foo_t")
+				<< luareg::constructor<int>()
+				<< luareg::destructor()
+				<< luareg::def("add", &foo_t::add)
+				<< luareg::def("get", &foo_t::get)
+				<< luareg::def("get_pointer", &foo_t::get_pointer)
+				<< luareg::def("get_base", &foo_t::get_base)
+			]
+			<< lua::def("test21", &test21);
 
 		lua::execute(state, "test.lua");
 	}
-	catch(const lua::parameter_error_t &e)
+	catch (const luareg::parameter_error_t &e)
 	{
 		std::cout << e.what() << std::endl;
 		e.dump(std::cout);
 	}
-	catch(const lua::fatal_error_t &e)
+	catch(const luareg::fatal_error_t &e)
 	{
 		std::cout << e.what() << std::endl;
 		e.dump(std::cout);
@@ -160,13 +84,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		auto val = std::make_pair("test abc", 10.2);
 		lua::call(state, "test_call2", 1, "haha", val);
 	}
-	catch(const lua::fatal_error_t &e)
+	catch(const luareg::fatal_error_t &e)
 	{
 		std::cout << e.what() << std::endl;
 		e.dump(std::cout);
 	}
-
-
-	system("pause");
-	return 0;
-}
