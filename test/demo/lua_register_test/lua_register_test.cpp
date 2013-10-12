@@ -12,6 +12,21 @@
 namespace lua = luareg;
 
 
+namespace luareg  {
+
+	template <>
+	struct convertion_t<std::pair<const std::uint32_t *, std::uint32_t>> 
+	{
+		static std::pair<const std::uint32_t *, std::uint32_t> from(state_t &state, int index)
+		{
+			std::uint32_t len = 0;
+			auto p = ::lua_tolstring(state, index, &len);
+
+			return {reinterpret_cast<const std::uint32_t *>(p), len};
+		}
+	};
+}
+
 void test0()
 {}
 
@@ -119,19 +134,21 @@ std::uint32_t test20(lua::state_t &state, const lua::index_t idx)
 	return 10;
 }
 
-void test21()
-{
-	printf(__FUNCTION__);
-}
-
 
 struct base_t
 {
 	static const bool is_userdata = true;
 
+	int m_ = 10, n_ = 20;
+
 	void print()
 	{
 		std::cout << __FUNCTION__ << std::endl;
+	}
+
+	void cacu(int n)
+	{
+		auto cnt = m_ + n_ + n;
 	}
 };
 
@@ -175,6 +192,8 @@ public:
 };
 
 
+
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	std::allocator<char> std_allocator;
@@ -182,61 +201,73 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	try
 	{
-		test_t t;
+		{
+			test_t t;
 
-		// free function & class method
-		luareg::module(state, "cpp")
-			<< lua::def("test0", &test0)
-			<< lua::def("test1", &test1)
-			<< lua::def("test2", &test2)
-			<< lua::def("test3", &test3)
-			<< lua::def("test4", &test4)
-			<< lua::def("test5", &test5)
-			<< lua::def("test6", &t, &test_t::test6);
+			// free function & class method
+			luareg::module(state, "cpp")
+				<< lua::def("test0", &test0)
+				<< lua::def("test1", &test1)
+				<< lua::def("test2", &test2)
+				<< lua::def("test3", &test3)
+				<< lua::def("test4", &test4)
+				<< lua::def("test5", &test5)
+				<< lua::def("test6", &t, &test_t::test6);
 
-		luareg::module(state, "cpp")
-			<< lua::def("test7", &test7)
-			<< lua::def("test8", &test8)
-			<< lua::def("test9", &test9)
-			<< lua::def("test10", &test10)
-			<< lua::def("test11", &t, &test_t::test11)
-			<< lua::def("test12", &test12)
-			<< lua::def("test13", &test13)
-			<< lua::def("test14", &test14)
-			<< lua::def("test15", &test15)
-			<< lua::def("test16", &test16)
-			<< lua::def("test17", &test17)
-			<< lua::def("test18", &test18)
-			//<< lua::def("test19", [](int n, const std::string &msg)->int{ return n; })
-			<< lua::def("test20", &test20);
+			luareg::module(state, "cpp")
+				<< lua::def("test7", &test7)
+				<< lua::def("test8", &test8)
+				<< lua::def("test9", &test9)
+				<< lua::def("test10", &test10)
+				<< lua::def("test11", &t, &test_t::test11)
+				<< lua::def("test12", &test12)
+				<< lua::def("test13", &test13)
+				<< lua::def("test14", &test14)
+				<< lua::def("test15", &test15)
+				<< lua::def("test16", &test16)
+				<< lua::def("test17", &test17)
+				<< lua::def("test18", &test18)
+				<< lua::def("test19", [](int n, const std::string &msg)->int
+			{
+				return n;
+			})
+				<< lua::def("test20", &test20);
+		}
 
-		base_t base;
-		luareg::module(state)
-			<< lua::def("test21", &test21)
-			<< lua::def("base_print", &base, &base_t::print);
+		{
+			base_t base;
+			auto p_base = &base;
+			luareg::module(state)
+				<< lua::def("base_print", &base, &base_t::print)
+				<< lua::def("base_cacu", &base, &base_t::cacu)
+				<< lua::def("base_lambda", [p_base](int n)
+			{
+				p_base->cacu(n);
+			});
 
-		// object method
+			// object method
+
+			luareg::module(state, "cpp")
+				[
+					luareg::class_t<foo_t>(state, "foo_t")
+					<< luareg::constructor<int>()
+					<< luareg::destructor()
+					<< luareg::def("add", &foo_t::add)
+					<< luareg::def("get", &foo_t::get)
+					<< luareg::def("get_pointer", &foo_t::get_pointer)
+					<< luareg::def("get_base", &foo_t::get_base)
+				];
+
+		}
 	
-		luareg::module(state, "cpp")
-			[
-				luareg::class_t<foo_t>(state, "foo_t")
-				<< luareg::constructor<int>()
-				<< luareg::destructor()
-				<< luareg::def("add", &foo_t::add)
-				<< luareg::def("get", &foo_t::get)
-				<< luareg::def("get_pointer", &foo_t::get_pointer)
-				<< luareg::def("get_base", &foo_t::get_base)
-			]
-			<< lua::def("test21", &test21);
-
 		lua::execute(state, "test.lua");
 	}
-	catch (const luareg::parameter_error_t &e)
+	catch( const luareg::parameter_error_t &e )
 	{
 		std::cout << e.what() << std::endl;
 		e.dump(std::cout);
 	}
-	catch(const luareg::fatal_error_t &e)
+	catch( const luareg::fatal_error_t &e )
 	{
 		std::cout << e.what() << std::endl;
 		e.dump(std::cout);
@@ -250,7 +281,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		auto val = std::make_pair("test abc", 10.2);
 		lua::call(state, "test_call2", 1, "haha", val);
 	}
-	catch(const luareg::fatal_error_t &e)
+	catch( const luareg::fatal_error_t &e )
 	{
 		std::cout << e.what() << std::endl;
 		e.dump(std::cout);

@@ -18,6 +18,9 @@ namespace luareg { namespace details {
 			: name_(name)
 			, function_(func)
 		{}
+
+		free_function_t(const free_function_t &) = delete;
+		free_function_t &operator=(const free_function_t &) = delete;
 	};
 
 	
@@ -35,6 +38,9 @@ namespace luareg { namespace details {
 			, obj_(obj)
 			, function_(func)
 		{}
+
+		class_function_t(const class_function_t &) = delete;
+		class_function_t &operator=(const class_function_t &) = delete;
 	};
 
 	template < typename ...Args >
@@ -47,16 +53,19 @@ namespace luareg { namespace details {
 		using this_t = lambda_function_t<HandlerT, R, std::tuple<Args...>>;
 	
 		const char *name_;
-		HandlerT handler_;
+		HandlerT *obj_;
 
 		lambda_function_t(const char *name, HandlerT &&handler)
 			: name_(name)
-			, handler_(std::forward<HandlerT>(handler))
+			, obj_(&handler)
 		{}
 
-		R on_handler(Args...args)
+		lambda_function_t(const lambda_function_t &) = delete;
+		lambda_function_t &operator=(const lambda_function_t &) = delete;
+
+		R on_handler(Args &&...args)
 		{
-			return handler_(args...);
+			return HandlerT(std::forward<Args>(args)...);
 		}
 	};
 

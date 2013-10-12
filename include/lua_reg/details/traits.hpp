@@ -118,11 +118,23 @@ namespace luareg {
 
 
 		// is_callable
-		template<typename Func, typename... Args, typename = decltype( std::declval<Func>( )( std::declval<Args>( )... ) )> std::true_type is_callable_helper(int);
-		template<typename Func, typename... Args> std::false_type is_callable_helper(...);
-		template<typename T> struct is_callable;
-		template<typename Func, typename... Args> struct is_callable<Func(Args...)>: public decltype( is_callable_helper<Func, Args...>( 0 ) ) {};
-
+		template<typename Func, typename... Args, typename = decltype( std::declval<Func>( )( std::declval<Args>( )... ) )> 
+		std::true_type is_callable_helper(int);
+		
+		template<typename Func, typename... Args> 
+		std::false_type is_callable_helper(...);
+		
+		template<typename T, typename ...Args >
+		struct is_callable;
+		
+		template<typename Func, typename... Args> 
+		struct is_callable<Func(Args...)>
+			: public decltype( is_callable_helper<Func, Args...>( 0 ) ) {};
+		
+		template < typename T, typename ...Args >
+		struct is_callable<T, std::tuple<Args...>>
+			: is_callable<T(Args...)>
+		{};
 
 		template < typename T >
 		struct is_normal_t

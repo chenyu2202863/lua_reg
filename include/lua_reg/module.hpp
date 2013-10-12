@@ -57,9 +57,9 @@ namespace luareg {
 			{
 				state_t state(l);
 				typedef typename details::free_function_t<R, Args...>::function_t function_t;
-				auto func = static_cast<function_t>(::lua_touserdata(state, lua_upvalueindex(1)));
+				auto function = static_cast<function_t>(::lua_touserdata(state, lua_upvalueindex(1)));
 				
-				return details::call(state, func);
+				return details::call(state, function);
 			};
 
 			::lua_pushlightuserdata(state_, func.function_);
@@ -74,17 +74,27 @@ namespace luareg {
 		{
 			typedef typename details::class_function_t<R, T, Args...>::function_t function_t;
 
+			union implict_cast
+			{
+				function_t mem_ptr;
+				void *ptr;
+			};
+
 			auto lambda = [](lua_State *l)->int
 			{
 				state_t state(l);
 		
-				function_t *func = static_cast<function_t *>(::lua_touserdata(state, lua_upvalueindex(1)));
+				implict_cast impl_cast;
+				impl_cast.ptr = ::lua_touserdata(state, lua_upvalueindex(1));
 				T *obj = static_cast<T *>(::lua_touserdata(state, lua_upvalueindex(2)));
 				
-				return details::call(state, obj, *func);
+				return details::call(state, obj, impl_cast.mem_ptr);
 			};
 
-			::lua_pushlightuserdata(state_, (void *)(&func.function_));
+			implict_cast impl_cast;
+			impl_cast.mem_ptr = func.function_;
+
+			::lua_pushlightuserdata(state_, impl_cast.ptr);
 			::lua_pushlightuserdata(state_, func.obj_);
 			::lua_pushcclosure(state_, lambda, 2);
 			::lua_setfield(state_, -2, func.name_);
@@ -92,6 +102,26 @@ namespace luareg {
 			return *this;
 		}
 
+		template < typename HandlerT, typename R, typename ...Args >
+		module_t &operator<<(const details::lambda_function_t<HandlerT, R, std::tuple<Args...>> &func)
+		{
+			using function_t = details::lambda_function_t<HandlerT, R, std::tuple<Args...>>::function_t;
+
+			auto lambda = [](lua_State *l)->int
+			{
+				state_t state(l);
+
+				HandlerT *obj = static_cast<HandlerT *>(::lua_touserdata(state, lua_upvalueindex(1)));
+		
+				return details::call<HandlerT, R, Args...>(state, obj);
+			};
+
+			::lua_pushlightuserdata(state_, (void *)(func.obj_));
+			::lua_pushcclosure(state_, lambda, 1);
+			::lua_setfield(state_, -2, func.name_);
+
+			return *this;
+		}
 
 		template < typename T >
 		module_t &operator[](const class_t<T> &class_val)

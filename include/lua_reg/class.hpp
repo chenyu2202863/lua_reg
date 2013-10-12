@@ -78,12 +78,12 @@ namespace luareg {
 				if( !obj )
 					throw parameter_error_t(state, "class method on handler error");
 
-				function_t *func = static_cast<function_t *>(::lua_touserdata(state, lua_upvalueindex(1)));
+				auto function = static_cast<function_t *>(::lua_touserdata(state, lua_upvalueindex(1)));
 
-				return details::call(state, obj, *func);
+				return details::call(state, obj, *function);
 			};
 
-			::lua_pushlightuserdata(state_, (void *)(&func.function_));
+			::lua_pushlightuserdata(state_, (void *)&func.function_);
 			::lua_pushcclosure(state_, lambda, 1);
 			::lua_setfield(state_, -2, func.name_);
 

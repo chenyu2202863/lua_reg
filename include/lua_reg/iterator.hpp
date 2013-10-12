@@ -64,7 +64,7 @@ namespace luareg {
 				{
 					std::uint32_t len = 0;
 					const char *value = ::lua_tolstring(state_, idx, &len);
-					handler(std::make_pair(value, len));
+					handler(value);
 				}
 				break;
 			default:

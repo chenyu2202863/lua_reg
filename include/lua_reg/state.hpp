@@ -7,6 +7,7 @@
 #undef min
 #endif
 
+
 namespace luareg {
 
 	struct state_t
@@ -78,9 +79,6 @@ namespace luareg {
 				{LUA_OSLIBNAME,		::luaopen_os},
 				{LUA_STRLIBNAME,	::luaopen_string},
 				{LUA_MATHLIBNAME,	::luaopen_math},
-#if defined(DEBUG) || defined (_DEBUG)
-				{LUA_DBLIBNAME,		::luaopen_debug}
-#endif
 			};
 	
 			//state_ = ::lua_open();
@@ -125,7 +123,6 @@ namespace luareg {
 				::lua_pushstring(state_, lualibs[i].name);
 				::lua_call(state_, 1, 0);
 			}
-
 		}
 
 		void close()
