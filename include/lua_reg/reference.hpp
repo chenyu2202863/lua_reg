@@ -2,7 +2,8 @@
 #define __LUA_REFERENCE_HPP
 
 #include "config.hpp"
-
+#include "state.hpp"
+#include "error.hpp"
 
 namespace luareg {
 
@@ -11,10 +12,11 @@ namespace luareg {
 	{
 		struct function_check_t
 		{
-			static bool check(lua_State *state, int ref)
+			template < typename T >
+			static bool check(T &state, int ref)
 			{
 				::lua_rawgeti(state, LUA_REGISTRYINDEX, ref);
-				assert(lua_isfunction(state, -1));
+				LUAREG_ERROR(lua_isfunction(state, -1), LUA_TFUNCTION, ref);
 				lua_pop(state, 1);
 				return true;
 			}
@@ -22,10 +24,11 @@ namespace luareg {
 
 		struct table_check_t
 		{
-			static bool check(lua_State *state, int ref)
+			template < typename T >
+			static bool check(T &state, int ref)
 			{
 				::lua_rawgeti(state, LUA_REGISTRYINDEX, ref);
-				assert(lua_istable(state, -1));
+				LUAREG_ERROR(lua_istable(state, -1), LUA_TTABLE, ref);
 				lua_pop(state, 1);
 
 				return true;
@@ -34,10 +37,11 @@ namespace luareg {
 
 		struct string_check_t
 		{
-			static bool check(lua_State *state, int ref)
+			template < typename T >
+			static bool check(T &state, int ref)
 			{
 				::lua_rawgeti(state, LUA_REGISTRYINDEX, ref);
-				assert(::lua_isstring(state, -1));
+				LUAREG_ERROR(::lua_isstring(state, -1) == 0, LUA_TSTRING, ref);
 				lua_pop(state, 1);
 
 				return true;
@@ -101,16 +105,16 @@ namespace luareg {
 	public:
 		bool is_valid() const
 		{
-			assert(state_ != nullptr);
-			assert(ref_ != LUA_NOREF);
-			assert(CheckT::check(state_, ref_));
-			return ref_ != LUA_NOREF;
+			return state_ != nullptr &&
+				ref_ != LUA_NOREF &&
+				CheckT::check(state_, ref_);
 		}
 
 		void get() const
 		{
 			assert(state_ != nullptr);
 			assert(ref_ != LUA_NOREF);
+
 			::lua_rawgeti(state_, LUA_REGISTRYINDEX, ref_);
 		}
 
@@ -121,6 +125,11 @@ namespace luareg {
 				::luaL_unref(state_, LUA_REGISTRYINDEX, ref_);
 				ref_ = LUA_NOREF;
 			}
+		}
+
+		lua_State *state() const
+		{
+			return state_;
 		}
 	};
 

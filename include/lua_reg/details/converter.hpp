@@ -7,12 +7,20 @@
 namespace luareg {
 
 	struct state_t;
+
+	template < typename T, typename EnableT = void >
+	struct convertion_t;
 }
 
 namespace luareg { namespace details {
 
 	template < typename T >
-	struct check_type_t;
+	struct check_type_t
+	{
+		static void check(state_t &state, int idx)
+		{
+		}
+	};
 
 	template <>
 	struct check_type_t<bool>

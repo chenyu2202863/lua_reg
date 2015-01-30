@@ -13,18 +13,20 @@ namespace luareg {
 		int top = ::lua_gettop(state);
 
 		if( ::luaL_loadfile(state, file_name) )
-		{
-			error_t::handler(state);
-			return;
-		}
+			throw fatal_error_t(state, ::lua_tostring(state, -1));
 
 		int error_index = 0;
 		int base = ::lua_gettop(state);
-		lua_pushcfunction(state, &error_t::handler);
+		
+		std::string error_msg;
+		error_handler(state, error_msg);
+
 		::lua_insert(state, base);
 		error_index = base;
 
 		int error = ::lua_pcall(state, 0, LUA_MULTRET, error_index);
+		if( error != 0 )
+			throw fatal_error_t(state, error_msg, error);
 	}
 }
 

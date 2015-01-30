@@ -12,14 +12,14 @@ namespace luareg {
 	{}
 
 	template < typename T, typename... Args >
-	void push_value(state_t &state, T && t, Args && ...args)
+	void push_value(state_t &state, const T &t, const Args &...args)
 	{
-		push_value(state, std::forward<T>( t ));
-		push_value(state, std::forward<Args>( args )...);
+		push_value(state, t);
+		push_value(state, args...);
 	}
 
 	template < typename T, typename... Args >
-	void push_value(state_t &state, T && t)
+	void push_value(state_t &state, const T &t)
 	{
 		typedef typename std::remove_cv <
 			typename std::remove_reference<T>::type
@@ -75,48 +75,63 @@ namespace luareg {
 		int top_beg = ::lua_gettop(state);
 
 		::lua_getglobal(state, function_name);
-		auto arg_cnt = sizeof...(args);
+		std::int32_t arg_cnt = sizeof...(args);
 
 		push_value(state, std::forward<Args>(args)...);
 
 		int base = ::lua_gettop(state) - arg_cnt;
-		::lua_pushcfunction(state, &error_t::handler);
-		::lua_insert(state, base);
+
+		std::string error_msg;
+		error_handler(state, error_msg);
+
+		lua_insert(state, base);
 		int error_index = base;
 
-		int error = ::lua_pcall(state, arg_cnt, LUA_MULTRET, error_index);
-		assert(error == 0);
-
+		int error = lua_pcall(state, arg_cnt, LUA_MULTRET, error_index);
 		if( error_index != 0 )
-			::lua_remove(state, error_index);
+			lua_remove(state, error_index);
+
+		if( error != 0 )
+			throw fatal_error_t(state, error_msg, error);
 
 		int top_last = ::lua_gettop(state);
 
 		return call_ret_t(state, top_last - top_beg);
 	}
 
+	
+
 	template< typename ... Args >
-	call_ret_t call(state_t &state, const function_ref_t &func, Args &&... args)
+	call_ret_t call(state_t &state, const function_ref_t &func, const Args &... args)
 	{
-		assert(func.is_valid());
+		if( !func.is_valid() )
+			throw fatal_error_t(state, "lua function invalid()");
 
 		int top_beg = ::lua_gettop(state);
 
 		func.get();
+		if( state != func.state() )
+			throw std::runtime_error("state not equal to function state");
 
-		auto arg_cnt = sizeof...( args );
-		push_value(state, std::forward<Args>( args )...);
+		std::int32_t arg_cnt = sizeof...( args );
+		push_value(state, args...);
 
 		int error_index = 0;
 		int base = ::lua_gettop(state) - arg_cnt;
-		lua_pushcfunction(state, &error_t::handler);
+
+		std::string error_msg;
+		error_handler(state, error_msg);
+		
 		lua_insert(state, base);
 		error_index = base;
-		int error = ::lua_pcall(state, arg_cnt, LUA_MULTRET, error_index);
-		assert(error == 0);
+		int error = lua_pcall(state, arg_cnt, LUA_MULTRET, error_index);
 
 		if(error_index != 0)
-			::lua_remove(state, error_index);
+			lua_remove(state, error_index);
+
+		if( error != 0 )
+			throw fatal_error_t(state, error_msg, error);
+
 
 		int top_last = ::lua_gettop(state);
 

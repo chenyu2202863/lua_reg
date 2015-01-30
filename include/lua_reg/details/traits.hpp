@@ -1,6 +1,8 @@
 #ifndef __LUAREG_TRAITS_HPP
 #define __LUAREG_TRAITS_HPP
 
+#include <functional>
+
 namespace luareg { 
 	
 	struct state_t;
@@ -201,22 +203,22 @@ namespace luareg {
 		};
 
 
-		template <typename T, std::size_t N, typename... Args>
+		template <typename T, std::uint32_t N, typename... Args>
 		struct number_of_element_from_tuple_t
 		{
-			static const auto value = N + 1;
+			static const std::uint32_t value = N + 1;
 		};
 
-		template <typename T, std::size_t N, typename... Args>
+		template <typename T, std::uint32_t N, typename... Args>
 		struct number_of_element_from_tuple_t<T, N, T, Args...>
 		{
-			static const auto value = N;
+			static const std::uint32_t value = N;
 		};
 
-		template <typename T, std::size_t N, typename U, typename... Args>
+		template <typename T, std::uint32_t N, typename U, typename... Args>
 		struct number_of_element_from_tuple_t<T, N, U, Args...>
 		{
-			static const auto value = number_of_element_from_tuple_t<T, N + 1, Args...>::value;
+			static const std::uint32_t value = number_of_element_from_tuple_t<T, N + 1, Args...>::value;
 		};
 
 		template <typename T, typename... Args>

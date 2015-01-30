@@ -4,7 +4,6 @@
 #include <stdexcept>
 #include <cassert>
 #include <sstream>
-#include <iostream>
 
 #include "config.hpp"
 #include "state.hpp"
@@ -17,17 +16,20 @@ namespace luareg {
 	inline void stack_trace(const state_t &state, StreamT &os)
 	{
 		::lua_Debug entry = {0};
-		int depth = 0; 
+		int depth = 0;
 
 		while(::lua_getstack(state, depth, &entry))
 		{
+			if( depth >= 20 )
+				break;
+
 			int status = ::lua_getinfo(state, "Sln", &entry);
 			assert(status);
 
-			os << entry.short_src 
-				<< "(" << entry.currentline << "): " 
-				<< (entry.name ? entry.name : "?") 
-				<< std::endl;
+			os << entry.short_src
+			<< "(" << entry.currentline << "): "
+			<< (entry.name ? entry.name : "?")
+			<< std::endl;
 
 			++depth;
 		}
@@ -107,19 +109,35 @@ namespace luareg {
 		}
 	}
 
-	void error_report(state_t &state, bool suc, int type, int idx, const std::string &msg);
-
 	class fatal_error_t
 		: public std::exception
 	{
 		state_t state_;
 		std::string msg_;
+		int error_code_ = 0;
 
 	public:
 		fatal_error_t(state_t &state, std::string &&msg)
 			: state_(state)
 			, msg_(std::move(msg))
-		{}
+		{
+			std::ostringstream os;
+
+			os << std::endl << "lua stack: " << std::endl;
+			dump(os);
+
+			msg_ += os.str();
+		}
+
+		fatal_error_t(state_t &state, const std::string &msg, int code)
+			: state_(state)
+			, error_code_(code)
+		{
+			std::ostringstream os;
+			os << std::endl << msg << " code: " << code;
+
+			msg_ += os.str();
+		}
 
 		fatal_error_t(const fatal_error_t &rhs)
 			: state_(rhs.state_)
@@ -137,6 +155,9 @@ namespace luareg {
 			return *this;
 		}
 	
+		virtual ~fatal_error_t() throw()
+		{}
+
 	public:
 		template < typename StreamT >
 		void dump(StreamT &os) const
@@ -144,7 +165,7 @@ namespace luareg {
 			stack_trace(state_, os);
 		}
 
-		virtual const char* what() const
+		virtual const char* what() const throw()
 		{
 			return msg_.c_str();
 		}
@@ -166,6 +187,9 @@ namespace luareg {
 
 			dump_parameter(state_, os);
 
+			os << std::endl << "lua stack: " << std::endl;
+			dump(os);
+
 			msg_ += os.str();
 		}
 
@@ -177,6 +201,9 @@ namespace luareg {
 			os << " lua parameter--";
 
 			parse_parameter(state_, index, os);
+
+			os << std::endl << "lua stack: " << std::endl;
+			dump(os);
 
 			msg_ += os.str();
 		}
@@ -197,6 +224,9 @@ namespace luareg {
 			return *this;
 		}
 
+		virtual ~parameter_error_t() throw()
+		{}
+
 	public:
 		template < typename StreamT >
 		void dump(StreamT &os) const
@@ -204,40 +234,48 @@ namespace luareg {
 			stack_trace(state_, os);
 		}
 
-		virtual const char* what() const
+		virtual const char* what() const throw()
 		{
 			return msg_.c_str();
 		}
 	};
 	
 
-	struct error_t
+	template < typename T >
+	void error_handler(state_t &state, T &error_msg)
 	{
-		static int handler(lua_State *state)
+		auto lambda = [](lua_State *l)
 		{
-			std::uint32_t len = 0;
+			state_t state(l);
+
+			auto error_msg = static_cast<T *>(::lua_touserdata(state, lua_upvalueindex(1)));
+
+			std::size_t len = 0;
 			const char *msg = ::lua_tolstring(state, -1, &len);
 
-			std::string error_msg;
 			if( len == 0 )
-				error_msg = "unknown error";
+				*error_msg = "unknown error";
 			else
-				error_msg.append(msg, len);
-	
-			std::printf(error_msg.c_str());
-			std::printf("\n");
-			stack_trace(state, std::cerr);
-			assert(0 && "lua has fatal error");
-			throw fatal_error_t(state_t(state), std::move(error_msg));
+				error_msg->append(msg, len);
+
+			std::ostringstream os;
+			os << std::endl << "lua stack: " << std::endl;
+			stack_trace(state, os);
+
+			*error_msg += os.str();
 
 			return 0;
-		}
-	};
+		};
+
+		::lua_pushlightuserdata(state, (void *) &error_msg);
+		::lua_pushcclosure(state, lambda, 1);
+	}
+
 
 
 #define LUAREG_ERROR(expr, type, idx) error_report(state, (expr), type, idx, #expr);
 
-	inline void error_report(state_t &state, bool suc, int type, int idx, const std::string &msg)
+	inline void error_report(lua_State *state, bool suc, int type, int idx, const char *msg)
 	{
 		if( suc )
 			return;
@@ -249,12 +287,7 @@ namespace luareg {
 			<< "expected type [" << ::lua_typename(state, type) << "]" << std::endl
 			<< "information [" << msg << "]" << std::endl;
 
-		parameter_error_t param_error(state, os.str());
-		param_error.dump(std::cerr);
-		std::cerr << std::endl << param_error.what() << std::endl;
-		assert(suc);
-
-		throw param_error;
+		throw parameter_error_t(state_t(state), std::move(os.str()));
 	}
 
 }

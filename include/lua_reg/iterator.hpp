@@ -33,18 +33,18 @@ namespace luareg {
 		parameter_t &operator=(const parameter_t &);
 
 	public:
-		template < typename T >
-		void get_all(const std::function<void(const T &)> &handler, int start_idx, int cnt)
+		template < typename HandlerT >
+		void get_all(HandlerT &&handler, int start_idx, int cnt)
 		{
 			for(auto i = start_idx + 1; i <= cnt + start_idx; ++i)
 			{
-				_parse_parameter<T>(i, handler);
+				_parse_parameter(i, handler);
 			}
 		}
 
 	private:
-		template < typename T >
-		void _parse_parameter(int idx, const std::function<void(const T &)> &handler)
+		template < typename HandlerT >
+		void _parse_parameter(int idx, HandlerT &&handler)
 		{
 			auto lua_type = ::lua_type(state_, idx);
 
@@ -62,9 +62,9 @@ namespace luareg {
 				break;
 			case LUA_TSTRING:
 				{
-					std::uint32_t len = 0;
+					std::size_t len = 0;
 					const char *value = ::lua_tolstring(state_, idx, &len);
-					handler(value);
+					handler(std::make_pair(value, (std::uint32_t)len));
 				}
 				break;
 			default:

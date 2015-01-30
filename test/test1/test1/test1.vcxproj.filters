@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source files">
+      <UniqueIdentifier>{ddfb7555-56ba-4f7b-9d1f-ead2e3cbbdb9}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header files">
+      <UniqueIdentifier>{b859d148-1140-47a6-a5da-c73ba60c1342}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource files">
+      <UniqueIdentifier>{51be452c-6392-4bf4-81ed-d082bc031e14}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="Make files">
+      <UniqueIdentifier>{f8873fe9-35e6-4ea1-b4e0-45bdfb3b48db}</UniqueIdentifier>
+      <Extensions>*.mak</Extensions>
+    </Filter>
+    <Filter Include="lua_reg">
+      <UniqueIdentifier>{6d555b49-4348-4313-9fee-4b6b221d621c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="lua_reg\details">
+      <UniqueIdentifier>{fb0fa1e3-1019-4853-90b6-526ce35310f7}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="test1.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Makefile" />
+    <None Include="debug.mak">
+      <Filter>Make files</Filter>
+    </None>
+    <None Include="release.mak">
+      <Filter>Make files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\include\lua_reg\call.hpp">
+      <Filter>lua_reg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\class.hpp">
+      <Filter>lua_reg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\config.hpp">
+      <Filter>lua_reg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\converter.hpp">
+      <Filter>lua_reg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\error.hpp">
+      <Filter>lua_reg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\execute.hpp">
+      <Filter>lua_reg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\iterator.hpp">
+      <Filter>lua_reg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\lua_reg.hpp">
+      <Filter>lua_reg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\module.hpp">
+      <Filter>lua_reg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\reference.hpp">
+      <Filter>lua_reg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\state.hpp">
+      <Filter>lua_reg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\details\converter.hpp">
+      <Filter>lua_reg\details</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\details\dispatcher.hpp">
+      <Filter>lua_reg\details</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\details\function.hpp">
+      <Filter>lua_reg\details</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\lua_reg\details\traits.hpp">
+      <Filter>lua_reg\details</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

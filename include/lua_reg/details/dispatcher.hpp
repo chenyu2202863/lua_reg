@@ -11,7 +11,9 @@ namespace luareg { namespace details {
 	template < typename R, typename T, typename ...Args >
 	struct object_wrapper_t
 	{
-		using is_constructor_t = std::false_type;
+		using has_special_t = typename has_special_type_t<state_t, std::tuple<Args...>>::type;
+		using has_check_t = std::integral_constant<bool, !has_special_t::value>;
+
 		using return_t = R;
 		using handler_t = R(T::*)(Args...);
 
@@ -28,14 +30,15 @@ namespace luareg { namespace details {
 
 		R operator()(const Args &...param) const
 		{
-			return (obj_->*handler_)(param...);
+			return (*obj_.*handler_)(param...);
 		}
 	};
 
 	template < typename R, typename T, typename ...Args >
 	struct lambda_wrapper_t
 	{
-		using is_constructor_t = std::false_type;
+		using has_special_t = typename has_special_type_t<state_t, std::tuple<Args...>>::type;
+		using has_check_t = std::integral_constant<bool, !has_special_t::value>;
 		using return_t = R;
 		using handler_t = R(T::*)(Args...);
 
@@ -58,7 +61,8 @@ namespace luareg { namespace details {
 	template < typename R, typename ...Args >
 	struct function_wrapper_t
 	{
-		using is_constructor_t = std::false_type;
+		using has_special_t = typename has_special_type_t<state_t, std::tuple<Args...>>::type;
+		using has_check_t = std::integral_constant<bool, !has_special_t::value>;
 		using return_t = R;
 		using handler_t = R(*)(Args...);
 
@@ -80,7 +84,7 @@ namespace luareg { namespace details {
 	template < typename T, typename ...Args >
 	struct constructor_wrapper_t
 	{
-		using is_constructor_t = std::true_type;
+		using has_check_t = std::false_type;
 		typedef void return_t;
 		T *obj_;
 
@@ -198,20 +202,24 @@ namespace luareg { namespace details {
 
 
 	template < std::uint32_t N >
-	inline bool check_stack(state_t &state, std::int32_t offset, std::true_type)
+	inline bool check_stack(state_t &state, std::int32_t offset, std::false_type)
 	{
 		return true;
 	}
 
 	template < std::uint32_t N >
-	inline bool check_stack(state_t &state, std::int32_t offset, std::false_type)
+	inline bool check_stack(state_t &state, std::int32_t offset, std::true_type)
 	{
 		int n = ::lua_gettop(state) - offset;
 		if( n != N )
 		{
-			assert(!"lua stack parameter error");
 			dump_parameter(state, std::cerr);
-			throw parameter_error_t(state, "expect parameter count error ");
+			
+			parameter_error_t error(state, "expect parameter count error ");
+			error.dump(std::cerr);
+			assert(!"lua stack parameter error");
+
+			throw error;
 
 			return false;
 		}
@@ -258,9 +266,9 @@ namespace luareg { namespace details {
 	{
 		typedef typename T::params_t args_t;
 		typedef typename T::tuple_t tuple_t;
-		typedef typename T::is_constructor_t is_constructor_t;
+		typedef typename T::has_check_t has_check_t;
 
-		assert(check_stack<details::parameter_count_t<tuple_t>::value>(state, offset, is_constructor_t()));
+		assert(check_stack<details::parameter_count_t<tuple_t>::value>(state, offset, has_check_t()));
 		
 		enum
 		{
@@ -281,17 +289,18 @@ namespace luareg { namespace details {
 
 
 	template < typename R, typename T, typename ...Args >
-	std::int32_t call(state_t &state, T *obj, R(T::*handler)(Args...),
+	std::int32_t call(state_t &state, T *obj, R(T::*handler)(Args...), std::uint32_t offset = 0,
 					  typename std::enable_if<!std::is_same<R, void>::value>::type * = nullptr)
 	{
-		return convertion_t<R>::to(state, call_impl(state, make_obj(obj, handler), 0));
+		using result_t = typename std::remove_cv<R>::type;
+		return convertion_t<result_t>::to(state, call_impl(state, make_obj(obj, handler), offset));
 	}
 
 	template < typename R, typename T, typename ...Args >
-	std::int32_t call(state_t &state, T *obj, R(T::*handler)(Args...),
+	std::int32_t call(state_t &state, T *obj, R(T::*handler)(Args...), std::uint32_t offset = 0,
 					  typename std::enable_if<std::is_same<R, void>::value>::type * = nullptr)
 	{
-		call_impl(state, make_obj(obj, handler), 0);
+		call_impl(state, make_obj(obj, handler), offset);
 
 		return 0;
 	}
@@ -300,7 +309,8 @@ namespace luareg { namespace details {
 	std::int32_t call(state_t &state, R(*handler)(Args...),
 					  typename std::enable_if<!std::is_same<R, void>::value>::type * = nullptr)
 	{
-		return convertion_t<R>::to(state, call_impl(state, make_obj(handler), 0));
+		using result_t = typename std::remove_cv<R>::type;
+		return convertion_t<result_t>::to(state, call_impl(state, make_obj(handler), 0));
 	}
 
 	template < typename R, typename ...Args >
@@ -317,7 +327,8 @@ namespace luareg { namespace details {
 	std::uint32_t call(state_t &state, HandlerT *handler,
 		typename std::enable_if<!std::is_same<R, void>::value>::type * = nullptr)
 	{
-		return convertion_t<R>::to(state, call_impl(state, make_obj<R, HandlerT, Args...>(handler), 0));
+		using result_t = typename std::remove_cv<R>::type;
+		return convertion_t<result_t>::to(state, call_impl(state, make_obj<R, HandlerT, Args...>(handler), 0));
 	}
 
 	template < typename HandlerT, typename R, typename ...Args >

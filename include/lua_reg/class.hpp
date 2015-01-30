@@ -57,23 +57,23 @@ namespace luareg {
 			if( ::luaL_newmetatable(state_, name) == 0 )
 				throw fatal_error_t(state_, "register class has fatal error");
 
-			add_constructor<T>();
+			//add_constructor<T>();
 			add_destructor();
 
 			::lua_pushvalue(state_, -1);
 			::lua_setfield(state_, -1, "__index");
 		}
 
-		template < typename R, typename T, typename ...Args >
-		class_t &operator<<(const details::class_function_t<R, T, Args...> &func)
+		template < typename R, typename U, typename ...Args >
+		class_t &operator<<(const details::class_function_t<R, U, Args...> &func)
 		{
-			typedef typename details::class_function_t<R, T, Args...>::function_t function_t;
+			typedef typename details::class_function_t<R, U, Args...>::function_t function_t;
 
 			auto lambda = [](lua_State *l)->int
 			{
 				state_t state(l);
 
-				T *obj = static_cast<T *>(::luaL_checkudata(state, 1, class_name_t<T>::name_.c_str()));
+				U *obj = static_cast<U *>(::luaL_checkudata(state, 1, class_name_t<T>::name_.c_str()));
 				assert(obj != nullptr);
 				if( !obj )
 					throw parameter_error_t(state, "class method on handler error");
@@ -135,7 +135,7 @@ namespace luareg {
 		}
 
 	private:
-		template < typename U >
+		/*template < typename U >
 		void add_constructor(typename std::enable_if<std::has_default_constructor<U>::value>::type * = nullptr)
 		{
 			*this << constructor<>();
@@ -144,7 +144,7 @@ namespace luareg {
 		template < typename U >
 		void add_constructor(typename std::enable_if<!std::has_default_constructor<U>::value>::type * = nullptr)
 		{
-		}
+		}*/
 
 		void add_destructor()
 		{
