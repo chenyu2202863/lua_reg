@@ -41,11 +41,11 @@ print(cpp.test19(2323, "test"))
 print(cpp.test20())
 
 
--- ff = foo_t:new(2);
--- --ff1 = foo_t:new(10);
--- --ff:add(1, 4)
+ff = cpp.foo_t:new(2);
+ff1 = cpp.foo_t:new(10);
+ff:add(1, 4)
 
--- sub_ff = ff:get_pointer()
+sub_ff = ff:get_pointer()
 
 
 -- base = sub_ff:get_base()

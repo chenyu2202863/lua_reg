@@ -146,9 +146,9 @@ namespace luareg {
 
 			for( auto i = 0; i != _countof(lualibs); ++i )
 			{
-				::lua_pushcfunction(state_, lualibs[i].func);
-				::lua_pushstring(state_, lualibs[i].name);
-				::lua_call(state_, 1, 0);
+				//copy from luaL_openlibs
+				luaL_requiref(state_, lualibs[i].name, lualibs[i].func, 1);
+				lua_pop(state_, 1);  /* remove lib */
 			}
 		}
 

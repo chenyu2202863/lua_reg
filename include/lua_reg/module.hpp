@@ -27,6 +27,7 @@ namespace luareg {
 				
 				if( lua_isnil(state_, -1) ) // has same name table
 				{
+					::lua_pop(state_, 1);
 					::lua_newtable(state_);
 					::lua_setglobal(state_, name_);
 					::lua_getglobal(state_, name_);
