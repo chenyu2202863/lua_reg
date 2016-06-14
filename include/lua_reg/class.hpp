@@ -80,7 +80,7 @@ namespace luareg {
 
 				auto function = static_cast<function_t *>(::lua_touserdata(state, lua_upvalueindex(1)));
 
-				return details::call(state, obj, *function);
+				return details::call(state, obj, *function,1);
 			};
 
 			::lua_pushlightuserdata(state_, (void *)&func.function_);
